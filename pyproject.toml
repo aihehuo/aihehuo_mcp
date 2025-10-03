@@ -1,0 +1,8 @@
+[project]
+name = "aihehuo-mcp"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["mcp", "requests", "pydantic"]
+
+[project.scripts]
+aihehuo-mcp = "aihehuo_mcp.server:main"
