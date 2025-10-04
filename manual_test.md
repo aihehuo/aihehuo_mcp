@@ -17,6 +17,12 @@
    
    # Test 3: Search members (requires API key)
    echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "测试", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 4: Search ideas (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "创业", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 5: Get group info (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "1233"}}}' | uvx --from . python -m aihehuo_mcp.server
    ```
 
 ## Method 2: Using MCP Client
@@ -33,6 +39,8 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
 2. The server will provide these tools:
    - `server_info()` - Health check and server information
    - `search_members(params)` - Search for 爱合伙 members
+   - `search_ideas(params)` - Search for 爱合伙 ideas/projects
+   - `get_group_info(params)` - Get group information and member data
 
 ## Method 3: Test with Environment Variables
 
@@ -49,4 +57,32 @@ Then use Method 1 to send test requests.
 
 - **server_info()** should return server metadata
 - **search_members()** should return search results (or error if API key is invalid)
-- Both tools should be listed in `tools/list` response
+- **search_ideas()** should return idea/project search results (or error if API key is invalid)
+- **get_group_info()** should return group information and member data (or error if API key is invalid)
+- All four tools should be listed in `tools/list` response
+
+## Test Examples
+
+### Search Ideas Examples
+```bash
+# Search for startup ideas
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "AI创业", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Search for investment opportunities
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "投资", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Search for business projects
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "电商", "paginate": {"page": 1, "per": 8}}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Get Group Info Examples
+```bash
+# Get group information by ID
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get another group's information
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test with different group ID format
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+```

@@ -25,6 +25,9 @@ class SearchIdeasParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
+class GetGroupInfoParams(BaseModel):
+    group_id: str = Field(..., description="群组ID")
+
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
     def __init__(self):
@@ -80,6 +83,20 @@ class SimpleMCPServer:
                         }
                     },
                     "required": ["query"]
+                }
+            },
+            "get_group_info": {
+                "name": "get_group_info",
+                "description": "获取群组基本情况和群内所有成员数据",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "group_id": {
+                            "type": "string",
+                            "description": "群组ID"
+                        }
+                    },
+                    "required": ["group_id"]
                 }
             }
         }
@@ -225,6 +242,52 @@ class SimpleMCPServer:
                         "page_size": arguments.get("paginate", {}).get("per", 10),
                         "hits": [],
                         "error": str(e)
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_group_info":
+                try:
+                    params = GetGroupInfoParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL with group ID and fixed parameters: /users/e{ID}?text_only=1&all_users=1
+                    url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}?text_only=1&all_users=1"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "group_id": arguments.get("group_id", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to fetch group information"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
