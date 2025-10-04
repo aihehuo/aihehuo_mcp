@@ -21,6 +21,10 @@ class SearchMembersParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
+class SearchIdeasParams(BaseModel):
+    query: str = Field(..., description="搜索关键词")
+    paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
+
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
     def __init__(self):
@@ -37,6 +41,28 @@ class SimpleMCPServer:
             "search_members": {
                 "name": "search_members", 
                 "description": "搜索爱合伙平台上的创业者/会员",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "搜索关键词"
+                        },
+                        "paginate": {
+                            "type": "object",
+                            "properties": {
+                                "page": {"type": "integer", "default": 1},
+                                "per": {"type": "integer", "default": 10}
+                            },
+                            "default": {"page": 1, "per": 10}
+                        }
+                    },
+                    "required": ["query"]
+                }
+            },
+            "search_ideas": {
+                "name": "search_ideas", 
+                "description": "搜索爱合伙平台上的创业想法/项目",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -123,6 +149,57 @@ class SimpleMCPServer:
                     }
 
                     url = f"{AIHEHUO_API_BASE}/users/search"
+                    
+                    resp = requests.get(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "total": 0,
+                        "page": arguments.get("paginate", {}).get("page", 1),
+                        "page_size": arguments.get("paginate", {}).get("per", 10),
+                        "hits": [],
+                        "error": str(e)
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "search_ideas":
+                try:
+                    params = SearchIdeasParams(**arguments)
+                    
+                    payload = {
+                        "query": params.query,
+                        "paginate": params.paginate
+                    }
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    url = f"{AIHEHUO_API_BASE}/ideas/search"
                     
                     resp = requests.get(url, json=payload, headers=headers, timeout=15)
                     resp.raise_for_status()
