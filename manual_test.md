@@ -23,6 +23,12 @@
    
    # Test 5: Get group info (requires API key)
    echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "1233"}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 6: Update user bio (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "update_bio", "arguments": {"bio": "我是AI创业者，专注于人工智能技术研发"}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 7: Update user goal (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "update_goal", "arguments": {"goal": "寻找技术合伙人，共同开发AI产品"}}}' | uvx --from . python -m aihehuo_mcp.server
    ```
 
 ## Method 2: Using MCP Client
@@ -41,6 +47,8 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `search_members(params)` - Search for 爱合伙 members
    - `search_ideas(params)` - Search for 爱合伙 ideas/projects
    - `get_group_info(params)` - Get group information and member data
+   - `update_bio(params)` - Update user profile bio
+   - `update_goal(params)` - Update user profile goal
 
 ## Method 3: Test with Environment Variables
 
@@ -59,7 +67,9 @@ Then use Method 1 to send test requests.
 - **search_members()** should return search results (or error if API key is invalid)
 - **search_ideas()** should return idea/project search results (or error if API key is invalid)
 - **get_group_info()** should return group information and member data (or error if API key is invalid)
-- All four tools should be listed in `tools/list` response
+- **update_bio()** should update user bio and return success/error response
+- **update_goal()** should update user goal and return success/error response
+- All six tools should be listed in `tools/list` response
 
 ## Test Examples
 
@@ -85,4 +95,19 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "ge
 
 # Test with different group ID format
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Update Profile Examples
+```bash
+# Update user bio
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "update_bio", "arguments": {"bio": "我是AI创业者，专注于人工智能技术研发"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update user goal
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "update_goal", "arguments": {"goal": "寻找技术合伙人，共同开发AI产品"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update bio with different content
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "update_bio", "arguments": {"bio": "10年互联网经验，擅长产品设计和团队管理"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update goal with different content
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "update_goal", "arguments": {"goal": "寻找投资机会，扩大业务规模"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
