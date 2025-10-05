@@ -52,9 +52,14 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_group_info(params)` - Get group information and member data
    - `update_bio(params)` - Update user profile bio
    - `update_goal(params)` - Update user profile goal
-   - `get_current_user_profile()` - Get current user profile information
    - `get_current_user_ideas(params)` - Get current user's ideas/projects
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
+
+3. The server will also provide these prompts:
+   - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
+
+4. The server will also provide these resources:
+   - `aihehuo://current_user/profile` - Get current user profile information
 
 ## Method 3: Test with Environment Variables
 
@@ -75,10 +80,13 @@ Then use Method 1 to send test requests.
 - **get_group_info()** should return group information and member data (or error if API key is invalid)
 - **update_bio()** should update user bio and return success/error response
 - **update_goal()** should update user goal and return success/error response
-- **get_current_user_profile()** should return current user profile (or error if API key/CURRENT_USER_ID is invalid)
 - **get_current_user_ideas()** should return current user's ideas (or error if API key/CURRENT_USER_ID is invalid)
 - **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
-- All nine tools should be listed in `tools/list` response
+- **prompts/list** should return available prompts
+- **prompts/get** should return prompt content from markdown files
+- **resources/list** should return available resources
+- **resources/read** should return current user profile (or error if API key/CURRENT_USER_ID is invalid)
+- All eight tools, prompts, and resources should be listed in their respective list responses
 
 ## Test Examples
 
@@ -123,19 +131,28 @@ echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "up
 
 ### Get Current User Examples
 ```bash
-# Get current user profile (requires CURRENT_USER_ID env var)
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_current_user_profile", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
-
 # Get current user's ideas with default pagination (requires CURRENT_USER_ID env var)
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Get current user's ideas with custom pagination
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Test with environment variables set
 export CURRENT_USER_ID="12345"
-echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_current_user_profile", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
-echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Resource Examples
+```bash
+# List available resources
+echo '{"jsonrpc": "2.0", "id": 1, "method": "resources/list", "params": {}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get current user profile as a resource (requires CURRENT_USER_ID env var)
+echo '{"jsonrpc": "2.0", "id": 2, "method": "resources/read", "params": {"uri": "aihehuo://current_user/profile"}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test with environment variables set
+export CURRENT_USER_ID="12345"
+echo '{"jsonrpc": "2.0", "id": 3, "method": "resources/read", "params": {"uri": "aihehuo://current_user/profile"}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Get Idea Details Examples
@@ -148,4 +165,16 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "ge
 
 # Test with different idea IDs
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_idea_details", "arguments": {"idea_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Prompt Examples
+```bash
+# List available prompts
+echo '{"jsonrpc": "2.0", "id": 1, "method": "prompts/list", "params": {}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get the pitch prompt
+echo '{"jsonrpc": "2.0", "id": 2, "method": "prompts/get", "params": {"name": "pitch"}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get pitch prompt with arguments
+echo '{"jsonrpc": "2.0", "id": 3, "method": "prompts/get", "params": {"name": "pitch", "arguments": {"target_audience": "investors", "context": "demo_day"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```

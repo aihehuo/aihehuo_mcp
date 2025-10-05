@@ -143,15 +143,6 @@ class SimpleMCPServer:
                     "required": ["goal"]
                 }
             },
-            "get_current_user_profile": {
-                "name": "get_current_user_profile",
-                "description": "获取当前用户资料信息",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
-            },
             "get_current_user_ideas": {
                 "name": "get_current_user_ideas",
                 "description": "获取当前用户的创业想法/项目",
@@ -185,6 +176,31 @@ class SimpleMCPServer:
                 }
             }
         }
+        
+        # Initialize prompts
+        self.prompts = {
+            "pitch": {
+                "name": "pitch",
+                "description": "Create a compelling 60-second elevator pitch based on your validated business model and required artifacts",
+                "arguments": [
+                    {
+                        "name": "arguments",
+                        "description": "User input arguments for the pitch",
+                        "required": False
+                    }
+                ]
+            }
+        }
+        
+        # Initialize resources
+        self.resources = {
+            "current_user_profile": {
+                "uri": "aihehuo://current_user/profile",
+                "name": "Current User Profile",
+                "description": "Get current user profile information",
+                "mimeType": "application/json"
+            }
+        }
     
     async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """处理 MCP 请求"""
@@ -198,7 +214,9 @@ class SimpleMCPServer:
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {
-                        "tools": {"listChanged": True}
+                        "tools": {"listChanged": True},
+                        "prompts": {"listChanged": True},
+                        "resources": {"listChanged": True}
                     },
                     "serverInfo": {
                         "name": "aihehuo-search-mcp",
@@ -215,6 +233,147 @@ class SimpleMCPServer:
                     "tools": list(self.tools.values())
                 }
             }
+        
+        elif method == "prompts/list":
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "prompts": list(self.prompts.values())
+                }
+            }
+        
+        elif method == "prompts/get":
+            prompt_name = request.get("params", {}).get("name")
+            if prompt_name in self.prompts:
+                # Read the prompt content from the file
+                try:
+                    prompt_file_path = f"aihehuo_mcp/prompts/{prompt_name}.md"
+                    with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                        prompt_content = f.read()
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "description": self.prompts[prompt_name]["description"],
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": {
+                                        "type": "text",
+                                        "text": prompt_content
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                except FileNotFoundError:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32602,
+                            "message": f"Prompt file not found: {prompt_name}.md"
+                        }
+                    }
+                except Exception as e:
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "error": {
+                            "code": -32603,
+                            "message": f"Error reading prompt: {str(e)}"
+                        }
+                    }
+            else:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Unknown prompt: {prompt_name}"
+                    }
+                }
+        
+        elif method == "resources/list":
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "resources": list(self.resources.values())
+                }
+            }
+        
+        elif method == "resources/read":
+            resource_uri = request.get("params", {}).get("uri")
+            if resource_uri == "aihehuo://current_user/profile":
+                try:
+                    # Check if CURRENT_USER_ID is set
+                    if CURRENT_USER_ID == "REPLACE_ME":
+                        error_result = {
+                            "error": "CURRENT_USER_ID not configured",
+                            "message": "Please set CURRENT_USER_ID environment variable"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "contents": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL with current user ID: /users/{CURRENT_USER_ID}
+                    url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "contents": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": CURRENT_USER_ID,
+                        "error": str(e),
+                        "message": "Failed to fetch current user profile"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "contents": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            else:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Unknown resource: {resource_uri}"
+                    }
+                }
         
         elif method == "tools/call":
             tool_name = request.get("params", {}).get("name")
@@ -465,65 +624,6 @@ class SimpleMCPServer:
                         "goal": arguments.get("goal", ""),
                         "error": str(e),
                         "message": "Failed to update user goal"
-                    }
-                    # Properly encode error result as UTF-8
-                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": request_id,
-                        "result": {
-                            "content": [{"type": "text", "text": error_text}]
-                        }
-                    }
-            
-            elif tool_name == "get_current_user_profile":
-                try:
-                    # Check if CURRENT_USER_ID is set
-                    if CURRENT_USER_ID == "REPLACE_ME":
-                        error_result = {
-                            "error": "CURRENT_USER_ID not configured",
-                            "message": "Please set CURRENT_USER_ID environment variable"
-                        }
-                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
-                        return {
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "result": {
-                                "content": [{"type": "text", "text": error_text}]
-                            }
-                        }
-                    
-                    headers = {
-                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                    }
-
-                    # Build URL with current user ID: /users/{CURRENT_USER_ID}
-                    url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
-                    
-                    resp = requests.get(url, headers=headers, timeout=15)
-                    resp.raise_for_status()
-                    # Ensure response is decoded as UTF-8
-                    resp.encoding = 'utf-8'
-                    data = resp.json()
-                    
-                    # Properly encode the JSON data as UTF-8 string
-                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
-                    
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": request_id,
-                        "result": {
-                            "content": [{"type": "text", "text": json_text}]
-                        }
-                    }
-                    
-                except Exception as e:
-                    error_result = {
-                        "user_id": CURRENT_USER_ID,
-                        "error": str(e),
-                        "message": "Failed to fetch current user profile"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
