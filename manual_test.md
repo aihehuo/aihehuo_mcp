@@ -29,6 +29,9 @@
    
    # Test 7: Update user goal (requires API key)
    echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "update_goal", "arguments": {"goal": "寻找技术合伙人，共同开发AI产品"}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 8: Get current user profile (requires API key and CURRENT_USER_ID)
+   echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "get_current_user", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
    ```
 
 ## Method 2: Using MCP Client
@@ -49,6 +52,9 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_group_info(params)` - Get group information and member data
    - `update_bio(params)` - Update user profile bio
    - `update_goal(params)` - Update user profile goal
+   - `get_current_user_profile()` - Get current user profile information
+   - `get_current_user_ideas(params)` - Get current user's ideas/projects
+   - `get_idea_details(params)` - Get detailed information about a specific idea/project
 
 ## Method 3: Test with Environment Variables
 
@@ -69,7 +75,10 @@ Then use Method 1 to send test requests.
 - **get_group_info()** should return group information and member data (or error if API key is invalid)
 - **update_bio()** should update user bio and return success/error response
 - **update_goal()** should update user goal and return success/error response
-- All six tools should be listed in `tools/list` response
+- **get_current_user_profile()** should return current user profile (or error if API key/CURRENT_USER_ID is invalid)
+- **get_current_user_ideas()** should return current user's ideas (or error if API key/CURRENT_USER_ID is invalid)
+- **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
+- All nine tools should be listed in `tools/list` response
 
 ## Test Examples
 
@@ -110,4 +119,33 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "up
 
 # Update goal with different content
 echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "update_goal", "arguments": {"goal": "寻找投资机会，扩大业务规模"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Get Current User Examples
+```bash
+# Get current user profile (requires CURRENT_USER_ID env var)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_current_user_profile", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get current user's ideas with default pagination (requires CURRENT_USER_ID env var)
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get current user's ideas with custom pagination
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test with environment variables set
+export CURRENT_USER_ID="12345"
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_current_user_profile", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_current_user_ideas", "arguments": {"paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Get Idea Details Examples
+```bash
+# Get details for a specific idea (requires API key)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_idea_details", "arguments": {"idea_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get details for another idea
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_idea_details", "arguments": {"idea_id": "67890"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test with different idea IDs
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_idea_details", "arguments": {"idea_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```

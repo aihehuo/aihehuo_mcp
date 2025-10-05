@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", message=".*found in sys.modules after import.*
 # === 配置 ===
 AIHEHUO_API_BASE = os.getenv("AIHEHUO_API_BASE", "https://new-api.aihehuo.com")
 AIHEHUO_API_KEY  = os.getenv("AIHEHUO_API_KEY",  "REPLACE_ME")
+CURRENT_USER_ID  = os.getenv("CURRENT_USER_ID",  "REPLACE_ME")
 
 # === 定义请求/响应模型 ===
 class SearchMembersParams(BaseModel):
@@ -33,6 +34,15 @@ class UpdateBioParams(BaseModel):
 
 class UpdateGoalParams(BaseModel):
     goal: str = Field(..., description="用户目标")
+
+class GetCurrentUserParams(BaseModel):
+    pass  # No parameters needed, uses CURRENT_USER_ID from environment
+
+class GetCurrentUserIdeasParams(BaseModel):
+    paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
+
+class GetIdeaDetailsParams(BaseModel):
+    idea_id: str = Field(..., description="想法/项目ID")
 
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
@@ -131,6 +141,47 @@ class SimpleMCPServer:
                         }
                     },
                     "required": ["goal"]
+                }
+            },
+            "get_current_user_profile": {
+                "name": "get_current_user_profile",
+                "description": "获取当前用户资料信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            "get_current_user_ideas": {
+                "name": "get_current_user_ideas",
+                "description": "获取当前用户的创业想法/项目",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "paginate": {
+                            "type": "object",
+                            "properties": {
+                                "page": {"type": "integer", "default": 1},
+                                "per": {"type": "integer", "default": 10}
+                            },
+                            "default": {"page": 1, "per": 10}
+                        }
+                    },
+                    "required": []
+                }
+            },
+            "get_idea_details": {
+                "name": "get_idea_details",
+                "description": "获取指定想法/项目的详细信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "idea_id": {
+                            "type": "string",
+                            "description": "想法/项目ID"
+                        }
+                    },
+                    "required": ["idea_id"]
                 }
             }
         }
@@ -414,6 +465,177 @@ class SimpleMCPServer:
                         "goal": arguments.get("goal", ""),
                         "error": str(e),
                         "message": "Failed to update user goal"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_current_user_profile":
+                try:
+                    # Check if CURRENT_USER_ID is set
+                    if CURRENT_USER_ID == "REPLACE_ME":
+                        error_result = {
+                            "error": "CURRENT_USER_ID not configured",
+                            "message": "Please set CURRENT_USER_ID environment variable"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL with current user ID: /users/{CURRENT_USER_ID}
+                    url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": CURRENT_USER_ID,
+                        "error": str(e),
+                        "message": "Failed to fetch current user profile"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_current_user_ideas":
+                try:
+                    params = GetCurrentUserIdeasParams(**arguments)
+                    
+                    # Check if CURRENT_USER_ID is set
+                    if CURRENT_USER_ID == "REPLACE_ME":
+                        error_result = {
+                            "error": "CURRENT_USER_ID not configured",
+                            "message": "Please set CURRENT_USER_ID environment variable"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL for current user's ideas with pagination: /ideas/my_ideas
+                    url = f"{AIHEHUO_API_BASE}/ideas/my_ideas"
+                    
+                    # Add pagination parameters to the request
+                    payload = {
+                        "paginate": params.paginate
+                    }
+                    
+                    resp = requests.get(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": CURRENT_USER_ID,
+                        "error": str(e),
+                        "message": "Failed to fetch current user ideas"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_idea_details":
+                try:
+                    params = GetIdeaDetailsParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL for idea details: /ideas/{idea_id}
+                    url = f"{AIHEHUO_API_BASE}/ideas/{params.idea_id}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "idea_id": arguments.get("idea_id", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to fetch idea details"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
