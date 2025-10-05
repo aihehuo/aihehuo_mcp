@@ -174,6 +174,15 @@ class SimpleMCPServer:
                     },
                     "required": ["idea_id"]
                 }
+            },
+            "get_current_user_profile": {
+                "name": "get_current_user_profile",
+                "description": "获取当前用户完整资料信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
             }
         }
         
@@ -196,8 +205,8 @@ class SimpleMCPServer:
         self.resources = {
             "current_user_profile": {
                 "uri": "aihehuo://current_user/profile",
-                "name": "Current User Profile",
-                "description": "Get current user profile information",
+                "name": "Current User Profile (Brief)",
+                "description": "Get brief current user profile information with tool reference for complete data",
                 "mimeType": "application/json"
             }
         }
@@ -311,36 +320,49 @@ class SimpleMCPServer:
                 try:
                     # Check if CURRENT_USER_ID is set
                     if CURRENT_USER_ID == "REPLACE_ME":
-                        error_result = {
-                            "error": "CURRENT_USER_ID not configured",
-                            "message": "Please set CURRENT_USER_ID environment variable"
-                        }
-                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
-                        return {
-                            "jsonrpc": "2.0",
-                            "id": request_id,
-                            "result": {
-                                "contents": [{"type": "text", "text": error_text}]
+                        brief_info = {
+                            "id": "not_configured",
+                            "name": "Unknown",
+                            "industry": "Unknown",
+                            "city": "Unknown", 
+                            "bio": "CURRENT_USER_ID not configured",
+                            "status": "Please set CURRENT_USER_ID environment variable",
+                            "available_tools": {
+                                "get_current_user_profile": "Use this tool to get complete user profile information"
                             }
                         }
-                    
-                    headers = {
-                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                    }
+                    else:
+                        # Fetch brief user information from API
+                        headers = {
+                            "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                        }
 
-                    # Build URL with current user ID: /users/{CURRENT_USER_ID}
-                    url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
+                        # Build URL with current user ID: /users/{CURRENT_USER_ID}
+                        url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
+                        
+                        resp = requests.get(url, headers=headers, timeout=15)
+                        resp.raise_for_status()
+                        # Ensure response is decoded as UTF-8
+                        resp.encoding = 'utf-8'
+                        data = resp.json()["data"]
+                        
+                        # Extract brief information from the full profile
+                        brief_info = {
+                            "id": data.get("id", "unknown"),
+                            "name": data.get("name", "Unknown"),
+                            "industry": data.get("industry", "Unknown"),
+                            "city": data.get("city", "Unknown"),
+                            "bio": data.get("bio", "No bio available"),
+                            "available_tools": {
+                                "get_current_user_profile": "Use this tool to get complete user profile information"
+                            },
+                            "note": "This is a brief resource. Use the 'get_current_user_profile' tool for complete profile data."
+                        }
                     
-                    resp = requests.get(url, headers=headers, timeout=15)
-                    resp.raise_for_status()
-                    # Ensure response is decoded as UTF-8
-                    resp.encoding = 'utf-8'
-                    data = resp.json()
-                    
-                    # Properly encode the JSON data as UTF-8 string
-                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    # Properly encode the brief info as UTF-8 string
+                    json_text = json.dumps(brief_info, ensure_ascii=False, indent=2)
                     
                     return {
                         "jsonrpc": "2.0",
@@ -352,9 +374,13 @@ class SimpleMCPServer:
                     
                 except Exception as e:
                     error_result = {
-                        "user_id": CURRENT_USER_ID,
+                        "id": "error",
+                        "name": "Error",
+                        "industry": "Unknown",
+                        "city": "Unknown",
+                        "bio": f"Failed to fetch user data: {str(e)}",
                         "error": str(e),
-                        "message": "Failed to fetch current user profile"
+                        "message": "Failed to fetch current user profile brief info"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
@@ -624,6 +650,65 @@ class SimpleMCPServer:
                         "goal": arguments.get("goal", ""),
                         "error": str(e),
                         "message": "Failed to update user goal"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_current_user_profile":
+                try:
+                    # Check if CURRENT_USER_ID is set
+                    if CURRENT_USER_ID == "REPLACE_ME":
+                        error_result = {
+                            "error": "CURRENT_USER_ID not configured",
+                            "message": "Please set CURRENT_USER_ID environment variable"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Build URL with current user ID: /users/{CURRENT_USER_ID}
+                    url = f"{AIHEHUO_API_BASE}/users/{CURRENT_USER_ID}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": CURRENT_USER_ID,
+                        "error": str(e),
+                        "message": "Failed to fetch current user profile"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
