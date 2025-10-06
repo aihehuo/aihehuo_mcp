@@ -47,8 +47,8 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
 
 2. The server will provide these tools:
    - `server_info()` - Health check and server information
-   - `search_members(params)` - Search for 爱合伙 members (query must be >5 characters)
-   - `search_ideas(params)` - Search for 爱合伙 ideas/projects
+   - `search_members(params)` - Search for 爱合伙 members using semantic vector search (query must be >5 characters, use coherent sentences)
+   - `search_ideas(params)` - Search for 爱合伙 ideas/projects using semantic vector search (use coherent sentences)
    - `get_group_info(params)` - Get group information and member data
    - `update_bio(params)` - Update user profile bio
    - `update_goal(params)` - Update user profile goal
@@ -93,30 +93,54 @@ Then use Method 1 to send test requests.
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
 - All ten tools, prompts, and resources should be listed in their respective list responses
 
+## Semantic Search Best Practices
+
+Since both `search_members` and `search_ideas` use vector semantic search, it's important to use coherent, descriptive sentences rather than simple keyword lists:
+
+### ✅ Good Examples:
+- **Members**: "寻找有AI技术背景的创业者，希望合作开发智能产品"
+- **Ideas**: "寻找基于人工智能技术的创新创业项目，特别是医疗健康和教育领域的应用"
+
+### ❌ Avoid These:
+- **Members**: "AI 创业者 技术" (just keywords)
+- **Ideas**: "AI 创业 投资" (just keywords)
+
+### Tips:
+- Use complete sentences that describe what you're looking for
+- Include context and specific requirements
+- Mention the purpose or goal of your search
+- Be descriptive about the type of person or project you need
+
 ## Test Examples
 
 ### Search Members Examples
 ```bash
-# Valid search (query >5 characters)
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI创业者"}}}' | uvx --from . python -m aihehuo_mcp.server
+# Good semantic search (coherent sentence describing what you're looking for)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找有AI技术背景的创业者，希望合作开发智能产品"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Valid search with pagination
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "技术合伙人", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Good semantic search with pagination
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "需要寻找有丰富经验的技术合伙人，擅长移动应用开发", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Invalid search (query <=5 characters) - will return error
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI"}}}' | uvx --from . python -m aihehuo_mcp.server
+# Another good semantic search example
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找对电商行业有深度理解的投资人，能够提供战略指导"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Bad example (too short) - will return error
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Search Ideas Examples
 ```bash
-# Search for startup ideas
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "AI创业", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Good semantic search for AI-related startup ideas
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "寻找基于人工智能技术的创新创业项目，特别是医疗健康和教育领域的应用", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Search for investment opportunities
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "投资", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Good semantic search for investment opportunities
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "寻找有潜力的早期创业项目，重点关注可持续发展和环保技术", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Search for business projects
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "电商", "paginate": {"page": 1, "per": 8}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Good semantic search for business projects
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "寻找电商平台相关的创业想法，特别是社交电商和新零售模式", "paginate": {"page": 1, "per": 8}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Another good semantic search example
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "寻找解决城市交通拥堵问题的创新解决方案，包括共享出行和智能交通"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Get Group Info Examples

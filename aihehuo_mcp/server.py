@@ -65,13 +65,13 @@ class SimpleMCPServer:
             },
             "search_members": {
                 "name": "search_members", 
-                "description": "搜索爱合伙平台上的创业者/会员。查询关键词长度必须大于5个字符",
+                "description": "搜索爱合伙平台上的创业者/会员。使用向量语义搜索，建议使用语义连贯的长句描述，避免简单关键词罗列",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "搜索关键词（长度必须大于5个字符）",
+                            "description": "语义搜索查询（长度必须大于5个字符，建议使用完整句子描述需求）",
                             "minLength": 6
                         },
                         "paginate": {
@@ -88,13 +88,13 @@ class SimpleMCPServer:
             },
             "search_ideas": {
                 "name": "search_ideas", 
-                "description": "搜索爱合伙平台上的创业想法/项目",
+                "description": "搜索爱合伙平台上的创业想法/项目。使用向量语义搜索，建议使用语义连贯的长句描述，避免简单关键词罗列",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "搜索关键词"
+                            "description": "语义搜索查询（建议使用完整句子描述需求）"
                         },
                         "paginate": {
                             "type": "object",
