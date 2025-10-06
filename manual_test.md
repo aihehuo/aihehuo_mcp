@@ -58,6 +58,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
+   - `business_plan` - Create a comprehensive business plan for your startup
 
 4. The server will also provide these resources:
    - `aihehuo://current_user/profile` - Get brief current user profile (id, name, industry, city, bio) with tool reference
@@ -183,4 +184,7 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "prompts/get", "params": {"name": "p
 
 # Get pitch prompt with arguments
 echo '{"jsonrpc": "2.0", "id": 3, "method": "prompts/get", "params": {"name": "pitch", "arguments": {"target_audience": "investors", "context": "demo_day"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get business plan prompt
+echo '{"jsonrpc": "2.0", "id": 4, "method": "prompts/get", "params": {"name": "business_plan"}}' | uvx --from . python -m aihehuo_mcp.server
 ```

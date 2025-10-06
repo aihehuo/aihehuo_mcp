@@ -9,6 +9,9 @@ from typing import Any, Dict, List, Optional
 import requests
 from pydantic import BaseModel, Field
 
+# Import prompts from separate file
+from .prompts import PROMPTS
+
 # Suppress the specific warning about module import order
 warnings.filterwarnings("ignore", message=".*found in sys.modules after import.*")
 
@@ -186,20 +189,8 @@ class SimpleMCPServer:
             }
         }
         
-        # Initialize prompts
-        self.prompts = {
-            "pitch": {
-                "name": "pitch",
-                "description": "Create a compelling 60-second elevator pitch based on your validated business model and required artifacts",
-                "arguments": [
-                    {
-                        "name": "arguments",
-                        "description": "User input arguments for the pitch",
-                        "required": False
-                    }
-                ]
-            }
-        }
+        # Initialize prompts from separate file
+        self.prompts = PROMPTS
         
         # Initialize resources
         self.resources = {
@@ -255,43 +246,9 @@ class SimpleMCPServer:
         elif method == "prompts/get":
             prompt_name = request.get("params", {}).get("name")
             if prompt_name in self.prompts:
-                # Read the prompt content from the file
+                # Get the embedded prompt content
                 try:
-                    import os
-                    
-                    # Get current working directory for debugging
-                    cwd = os.getcwd()
-                    
-                    # Try multiple possible paths for different deployment scenarios
-                    possible_paths = [
-                        f"aihehuo_mcp/prompts/{prompt_name}.md",  # Local development
-                        f"prompts/{prompt_name}.md",  # Git repo deployment
-                        f"./prompts/{prompt_name}.md",  # Relative path
-                        f"../prompts/{prompt_name}.md",  # Parent directory
-                        f"{cwd}/prompts/{prompt_name}.md",  # Absolute path
-                        f"{cwd}/aihehuo_mcp/prompts/{prompt_name}.md"  # Absolute path with package
-                    ]
-                    
-                    prompt_content = None
-                    found_path = None
-                    for path in possible_paths:
-                        try:
-                            with open(path, 'r', encoding='utf-8') as f:
-                                prompt_content = f.read()
-                                found_path = path
-                                break
-                        except FileNotFoundError:
-                            continue
-                    
-                    if prompt_content is None:
-                        # List directory contents for debugging
-                        try:
-                            dir_contents = os.listdir(cwd)
-                        except:
-                            dir_contents = "Unable to list directory"
-                        
-                        error_msg = f"Prompt file '{prompt_name}.md' not found. Current directory: {cwd}. Tried paths: {possible_paths}. Directory contents: {dir_contents}"
-                        raise FileNotFoundError(error_msg)
+                    prompt_content = self.prompts[prompt_name]["content"]
                     
                     return {
                         "jsonrpc": "2.0",
@@ -309,22 +266,13 @@ class SimpleMCPServer:
                             ]
                         }
                     }
-                except FileNotFoundError:
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": request_id,
-                        "error": {
-                            "code": -32602,
-                            "message": f"Prompt file not found: {prompt_name}.md"
-                        }
-                    }
                 except Exception as e:
                     return {
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "error": {
                             "code": -32603,
-                            "message": f"Error reading prompt: {str(e)}"
+                            "message": f"Error getting prompt content: {str(e)}"
                         }
                     }
             else:
