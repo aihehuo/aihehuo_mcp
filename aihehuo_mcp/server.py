@@ -47,6 +47,9 @@ class GetCurrentUserIdeasParams(BaseModel):
 class GetIdeaDetailsParams(BaseModel):
     idea_id: str = Field(..., description="想法/项目ID")
 
+class FetchNewUsersParams(BaseModel):
+    pass  # No parameters needed, uses fixed pagination
+
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
     def __init__(self):
@@ -181,6 +184,15 @@ class SimpleMCPServer:
             "get_current_user_profile": {
                 "name": "get_current_user_profile",
                 "description": "获取当前用户完整资料信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            "fetch_new_users": {
+                "name": "fetch_new_users",
+                "description": "获取新用户列表，分页获取10页数据并合并",
                 "inputSchema": {
                     "type": "object",
                     "properties": {},
@@ -803,6 +815,94 @@ class SimpleMCPServer:
                         "idea_id": arguments.get("idea_id", "unknown"),
                         "error": str(e),
                         "message": "Failed to fetch idea details"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "fetch_new_users":
+                try:
+                    params = FetchNewUsersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    }
+
+                    # Fetch 10 pages of data with per=200
+                    all_users = []
+                    for page in range(1, 11):
+                        try:
+                            url = f"{AIHEHUO_API_BASE}/users/new_users"
+                            payload = {
+                                "paginate": {
+                                    "page": page,
+                                    "per": 200
+                                }
+                            }
+                            
+                            resp = requests.get(url, json=payload, headers=headers, timeout=15)
+                            resp.raise_for_status()
+                            resp.encoding = 'utf-8'
+                            data = resp.json()
+                            
+                            # Extract users from response.data
+                            if "data" in data and isinstance(data["data"], list):
+                                # Filter to only include specified fields
+                                filtered_users = []
+                                for user in data["data"]:
+                                    filtered_user = {
+                                        "created_at_actual": user.get("created_at_actual"),
+                                        "last_accessed_at_actual": user.get("last_accessed_at_actual"),
+                                        "id": user.get("id"),
+                                        "name": user.get("name"),
+                                        "description": user.get("description"),
+                                        "page_url": user.get("page_url")
+                                    }
+                                    filtered_users.append(filtered_user)
+                                
+                                all_users.extend(filtered_users)
+                                
+                                # If we get less than 200 users, we've reached the end
+                                if len(data["data"]) < 200:
+                                    break
+                                    
+                        except Exception as e:
+                            # Log error but continue with other pages
+                            print(f"Error fetching page {page}: {str(e)}")
+                            continue
+                    
+                    # Create result with concatenated users
+                    result = {
+                        "total_users": len(all_users),
+                        "pages_fetched": min(page, 10),
+                        "users": all_users
+                    }
+                    
+                    # Properly encode the result as UTF-8 string
+                    json_text = json.dumps(result, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "error": str(e),
+                        "message": "Failed to fetch new users",
+                        "total_users": 0,
+                        "users": []
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
