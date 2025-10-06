@@ -257,9 +257,41 @@ class SimpleMCPServer:
             if prompt_name in self.prompts:
                 # Read the prompt content from the file
                 try:
-                    prompt_file_path = f"aihehuo_mcp/prompts/{prompt_name}.md"
-                    with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                        prompt_content = f.read()
+                    import os
+                    
+                    # Get current working directory for debugging
+                    cwd = os.getcwd()
+                    
+                    # Try multiple possible paths for different deployment scenarios
+                    possible_paths = [
+                        f"aihehuo_mcp/prompts/{prompt_name}.md",  # Local development
+                        f"prompts/{prompt_name}.md",  # Git repo deployment
+                        f"./prompts/{prompt_name}.md",  # Relative path
+                        f"../prompts/{prompt_name}.md",  # Parent directory
+                        f"{cwd}/prompts/{prompt_name}.md",  # Absolute path
+                        f"{cwd}/aihehuo_mcp/prompts/{prompt_name}.md"  # Absolute path with package
+                    ]
+                    
+                    prompt_content = None
+                    found_path = None
+                    for path in possible_paths:
+                        try:
+                            with open(path, 'r', encoding='utf-8') as f:
+                                prompt_content = f.read()
+                                found_path = path
+                                break
+                        except FileNotFoundError:
+                            continue
+                    
+                    if prompt_content is None:
+                        # List directory contents for debugging
+                        try:
+                            dir_contents = os.listdir(cwd)
+                        except:
+                            dir_contents = "Unable to list directory"
+                        
+                        error_msg = f"Prompt file '{prompt_name}.md' not found. Current directory: {cwd}. Tried paths: {possible_paths}. Directory contents: {dir_contents}"
+                        raise FileNotFoundError(error_msg)
                     
                     return {
                         "jsonrpc": "2.0",
