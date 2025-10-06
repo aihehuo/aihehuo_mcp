@@ -47,7 +47,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
 
 2. The server will provide these tools:
    - `server_info()` - Health check and server information
-   - `search_members(params)` - Search for 爱合伙 members
+   - `search_members(params)` - Search for 爱合伙 members (query must be >5 characters)
    - `search_ideas(params)` - Search for 爱合伙 ideas/projects
    - `get_group_info(params)` - Get group information and member data
    - `update_bio(params)` - Update user profile bio
@@ -94,6 +94,18 @@ Then use Method 1 to send test requests.
 - All ten tools, prompts, and resources should be listed in their respective list responses
 
 ## Test Examples
+
+### Search Members Examples
+```bash
+# Valid search (query >5 characters)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI创业者"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Valid search with pagination
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "技术合伙人", "paginate": {"page": 1, "per": 5}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Invalid search (query <=5 characters) - will return error
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
 
 ### Search Ideas Examples
 ```bash

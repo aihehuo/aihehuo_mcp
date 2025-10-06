@@ -65,13 +65,14 @@ class SimpleMCPServer:
             },
             "search_members": {
                 "name": "search_members", 
-                "description": "搜索爱合伙平台上的创业者/会员",
+                "description": "搜索爱合伙平台上的创业者/会员。查询关键词长度必须大于5个字符",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "搜索关键词"
+                            "description": "搜索关键词（长度必须大于5个字符）",
+                            "minLength": 6
                         },
                         "paginate": {
                             "type": "object",
@@ -416,6 +417,23 @@ class SimpleMCPServer:
             elif tool_name == "search_members":
                 try:
                     params = SearchMembersParams(**arguments)
+                    
+                    # Validate query length
+                    if len(params.query.strip()) <= 5:
+                        error_result = {
+                            "error": "Query too short",
+                            "message": "搜索关键词长度必须大于5个字符",
+                            "query_length": len(params.query.strip()),
+                            "minimum_length": 6
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
                     
                     payload = {
                         "query": params.query,
