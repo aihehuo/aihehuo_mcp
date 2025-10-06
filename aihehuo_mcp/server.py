@@ -407,7 +407,8 @@ class SimpleMCPServer:
                     
                     payload = {
                         "query": params.query,
-                        "paginate": params.paginate
+                        "paginate": params.paginate,
+                        "vector_search": True
                     }
                     headers = {
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
@@ -458,7 +459,8 @@ class SimpleMCPServer:
                     
                     payload = {
                         "query": params.query,
-                        "paginate": params.paginate
+                        "paginate": params.paginate,
+                        "vector_search": True
                     }
                     headers = {
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
