@@ -53,6 +53,11 @@ class FetchNewUsersParams(BaseModel):
 class GetUserDetailsParams(BaseModel):
     user_id: str = Field(..., description="用户ID")
 
+class SubmitWechatArticleDraftParams(BaseModel):
+    title: str = Field(..., description="文章标题")
+    digest: str = Field(..., description="文章摘要")
+    body: str = Field(..., description="文章正文HTML内容（仅包含body标签内的内容）")
+
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
     def __init__(self):
@@ -215,6 +220,28 @@ class SimpleMCPServer:
                         }
                     },
                     "required": ["user_id"]
+                }
+            },
+            "submit_wechat_article_draft": {
+                "name": "submit_wechat_article_draft",
+                "description": "提交微信文章草稿",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "文章标题"
+                        },
+                        "digest": {
+                            "type": "string",
+                            "description": "文章摘要"
+                        },
+                        "body": {
+                            "type": "string",
+                            "description": "文章正文HTML内容（仅包含body标签内的内容，不包含<body>标签本身）"
+                        }
+                    },
+                    "required": ["title", "digest", "body"]
                 }
             }
         }
@@ -995,6 +1022,60 @@ class SimpleMCPServer:
                         "user_id": arguments.get("user_id", "unknown"),
                         "error": str(e),
                         "message": "Failed to fetch user details"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "submit_wechat_article_draft":
+                try:
+                    params = SubmitWechatArticleDraftParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for submitting article draft: /articles/draft_wechat_article
+                    url = f"{AIHEHUO_API_BASE}/articles/draft_wechat_article"
+                    
+                    # Prepare payload
+                    payload = {
+                        "title": params.title,
+                        "digest": params.digest,
+                        "body": params.body
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "title": arguments.get("title", ""),
+                        "error": str(e),
+                        "message": "Failed to submit WeChat article draft"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

@@ -57,6 +57,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
    - `fetch_new_users()` - Fetch new users list (10 pages, 200 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
+   - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -97,11 +98,12 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
+- **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All eleven tools, prompts, and resources should be listed in their respective list responses
+- All twelve tools, prompts, and resources should be listed in their respective list responses
 
 ## Semantic Search Best Practices
 
@@ -238,6 +240,17 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "ge
 
 # Test with different user IDs
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_user_details", "arguments": {"user_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Submit WeChat Article Draft Examples
+```bash
+# Submit a simple article draft
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "AI创业的新机遇", "digest": "探索人工智能在创业领域的最新应用", "body": "<h1>AI创业的新机遇</h1><p>人工智能正在改变创业生态...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Submit an article with rich HTML content
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "2024创业趋势报告", "digest": "深度分析2024年最值得关注的创业方向", "body": "<h1>2024创业趋势报告</h1><h2>市场分析</h2><p>根据最新数据...</p><ul><li>趋势一</li><li>趋势二</li></ul><p><strong>结论：</strong>创业者应该...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Note: Body should only contain HTML content (no <body> tags), title and digest are plain text
 ```
 
 ### Prompt Examples
