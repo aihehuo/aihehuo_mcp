@@ -56,6 +56,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_current_user_ideas(params)` - Get current user's ideas/projects
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
    - `fetch_new_users()` - Fetch new users list (10 pages, 200 per page, filtered fields)
+   - `get_user_details(params)` - Get detailed information about a specific user
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -75,6 +76,14 @@ uvx --from . python -m aihehuo_mcp.server
 
 Then use Method 1 to send test requests.
 
+## API Request Headers
+
+All API requests to the 爱合伙 backend include the following headers:
+- `Authorization: Bearer {AIHEHUO_API_KEY}` - API authentication
+- `Content-Type: application/json` - JSON request format
+- `Accept: application/json` - JSON response format
+- `User-Agent: LLM_AGENT` - Identifies requests from the LLM Agent (using standard HTTP User-Agent header)
+
 ## Expected Results
 
 - **server_info()** should return server metadata
@@ -87,11 +96,12 @@ Then use Method 1 to send test requests.
 - **get_current_user_ideas()** should return current user's ideas (or error if API key/CURRENT_USER_ID is invalid)
 - **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
+- **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All ten tools, prompts, and resources should be listed in their respective list responses
+- All eleven tools, prompts, and resources should be listed in their respective list responses
 
 ## Semantic Search Best Practices
 
@@ -216,6 +226,18 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "ge
 ```bash
 # Fetch new users (10 pages, 200 per page, filtered fields)
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "fetch_new_users", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Get User Details Examples
+```bash
+# Get details for a specific user by ID
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_user_details", "arguments": {"user_id": "1"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get details for another user
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_user_details", "arguments": {"user_id": "67890"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test with different user IDs
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_user_details", "arguments": {"user_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Prompt Examples

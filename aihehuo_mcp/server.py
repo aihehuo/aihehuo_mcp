@@ -50,6 +50,9 @@ class GetIdeaDetailsParams(BaseModel):
 class FetchNewUsersParams(BaseModel):
     pass  # No parameters needed, uses fixed pagination
 
+class GetUserDetailsParams(BaseModel):
+    user_id: str = Field(..., description="用户ID")
+
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
     def __init__(self):
@@ -199,6 +202,20 @@ class SimpleMCPServer:
                     "properties": {},
                     "required": []
                 }
+            },
+            "get_user_details": {
+                "name": "get_user_details",
+                "description": "获取指定用户的详细信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "用户ID"
+                        }
+                    },
+                    "required": ["user_id"]
+                }
             }
         }
         
@@ -330,6 +347,7 @@ class SimpleMCPServer:
                             "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                             "Content-Type": "application/json",
                             "Accept": "application/json",
+                            "User-Agent": "LLM_AGENT"
                         }
 
                         # Build URL with current user ID: /users/{CURRENT_USER_ID}
@@ -444,6 +462,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     url = f"{AIHEHUO_API_BASE}/users/search"
@@ -496,6 +515,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     url = f"{AIHEHUO_API_BASE}/ideas/search"
@@ -543,6 +563,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     # Build URL with group ID and fixed parameters: /users/e{ID}?text_only=1&all_users=1
@@ -589,6 +610,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     url = f"{AIHEHUO_API_BASE}/users/update_bio"
@@ -635,6 +657,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     url = f"{AIHEHUO_API_BASE}/users/update_goal"
@@ -694,6 +717,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     # Build URL with current user ID: /users/{CURRENT_USER_ID}
@@ -755,6 +779,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     # Build URL for current user's ideas with pagination: /ideas/my_ideas
@@ -806,6 +831,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     # Build URL for idea details: /ideas/{idea_id}
@@ -852,6 +878,7 @@ class SimpleMCPServer:
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",
                         "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
                     }
 
                     # Fetch 10 pages of data with per=200
@@ -921,6 +948,53 @@ class SimpleMCPServer:
                         "message": "Failed to fetch new users",
                         "total_users": 0,
                         "users": []
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_user_details":
+                try:
+                    params = GetUserDetailsParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for user details: /users/{user_id}
+                    url = f"{AIHEHUO_API_BASE}/users/{params.user_id}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": arguments.get("user_id", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to fetch user details"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
