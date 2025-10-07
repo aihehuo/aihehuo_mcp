@@ -56,7 +56,7 @@ class GetUserDetailsParams(BaseModel):
 class SubmitWechatArticleDraftParams(BaseModel):
     title: str = Field(..., description="文章标题")
     digest: str = Field(..., description="文章摘要")
-    body: str = Field(..., description="文章正文HTML内容（仅包含body标签内的内容）")
+    body: str = Field(..., description="文章正文HTML内容（仅包含body标签内的内容，不能包含超链接<a>标签）")
 
 # === 简单的 MCP 服务器实现 ===
 class SimpleMCPServer:
@@ -224,7 +224,7 @@ class SimpleMCPServer:
             },
             "submit_wechat_article_draft": {
                 "name": "submit_wechat_article_draft",
-                "description": "提交微信文章草稿",
+                "description": "提交微信文章草稿。注意：文章正文不能包含超链接（<a>标签）",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -238,7 +238,7 @@ class SimpleMCPServer:
                         },
                         "body": {
                             "type": "string",
-                            "description": "文章正文HTML内容（仅包含body标签内的内容，不包含<body>标签本身）"
+                            "description": "文章正文HTML内容（仅包含body标签内的内容，不包含<body>标签本身，不能包含超链接<a>标签）"
                         }
                     },
                     "required": ["title", "digest", "body"]

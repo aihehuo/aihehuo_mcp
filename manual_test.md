@@ -57,7 +57,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
    - `fetch_new_users()` - Fetch new users list (10 pages, 200 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
-   - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML)
+   - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -247,10 +247,15 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "ge
 # Submit a simple article draft
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "AI创业的新机遇", "digest": "探索人工智能在创业领域的最新应用", "body": "<h1>AI创业的新机遇</h1><p>人工智能正在改变创业生态...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Submit an article with rich HTML content
+# Submit an article with rich HTML content (without hyperlinks)
 echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "2024创业趋势报告", "digest": "深度分析2024年最值得关注的创业方向", "body": "<h1>2024创业趋势报告</h1><h2>市场分析</h2><p>根据最新数据...</p><ul><li>趋势一</li><li>趋势二</li></ul><p><strong>结论：</strong>创业者应该...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Note: Body should only contain HTML content (no <body> tags), title and digest are plain text
+# Important Notes:
+# - Body should only contain HTML content (no <body> tags)
+# - Title and digest are plain text
+# - Body CANNOT contain hyperlinks (<a> tags) - they will be rejected
+# - Allowed HTML tags: h1-h6, p, strong, em, ul, ol, li, blockquote, etc.
+# - Forbidden HTML tags: <a> (hyperlinks)
 ```
 
 ### Prompt Examples
