@@ -58,6 +58,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `fetch_new_users()` - Fetch new users list (10 pages, 200 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
+   - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body with hyperlinks allowed, mentioned users/ideas)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -99,11 +100,37 @@ All API requests to the 爱合伙 backend include the following headers:
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing)
+- **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All twelve tools, prompts, and resources should be listed in their respective list responses
+- All thirteen tools, prompts, and resources should be listed in their respective list responses
+
+## Content Publishing Tools Comparison
+
+### `submit_wechat_article_draft` vs `create_ai_report`
+
+| Feature | WeChat Article Draft | AI Report |
+|---------|---------------------|-----------|
+| **Purpose** | Submit draft for WeChat publication | Create report for official website display |
+| **Hyperlinks** | ❌ NOT allowed (`<a>` tags forbidden) | ✅ Allowed (can include `<a>` tags) |
+| **User Mentions** | ❌ Not supported | ✅ Supported via `mentioned_user_ids` (ID strings) |
+| **Idea Mentions** | ❌ Not supported | ✅ Supported via `mentioned_idea_ids` |
+| **Field Names** | `title`, `digest`, `body` | `title`, `abstract`, `html_body` |
+| **API Endpoint** | `POST /articles/draft_wechat_article` | `POST /ai_reports` |
+| **Use Case** | WeChat social media content | In-depth analysis and reports on website |
+
+**When to use `submit_wechat_article_draft`:**
+- Publishing content to WeChat
+- Content without external links
+- Simple article format
+
+**When to use `create_ai_report`:**
+- Creating analytical reports for the website
+- Content that references users or projects
+- Reports with hyperlinks to external resources
+- AI-generated insights and recommendations
 
 ## Semantic Search Best Practices
 
@@ -256,6 +283,26 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "su
 # - Body CANNOT contain hyperlinks (<a> tags) - they will be rejected
 # - Allowed HTML tags: h1-h6, p, strong, em, ul, ol, li, blockquote, etc.
 # - Forbidden HTML tags: <a> (hyperlinks)
+```
+
+### Create AI Report Examples
+```bash
+# Create a simple AI report without mentions
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "2024年AI创业生态分析报告", "abstract": "本报告深度分析了2024年人工智能创业领域的发展趋势、投资热点和创新方向", "html_body": "<h1>2024年AI创业生态分析报告</h1><h2>市场概况</h2><p>人工智能创业市场持续升温...</p><h2>主要趋势</h2><ul><li>大模型应用落地</li><li>垂直行业AI解决方案</li></ul>"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Create an AI report with user mentions
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "爱合伙平台优秀创业者推荐", "abstract": "本报告推荐爱合伙平台上的优秀创业者，分析其创业方向和成功经验", "html_body": "<h1>优秀创业者推荐</h1><p>本期推荐以下创业者：</p><ul><li><a href=\"/users/12345\">张三</a> - AI教育领域</li><li><a href=\"/users/67890\">李四</a> - 智能硬件</li></ul>", "mentioned_user_ids": ["12345", "67890"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Create an AI report with idea mentions and hyperlinks
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "本周热门创业项目精选", "abstract": "精选本周最具潜力的创业项目，涵盖AI、电商、教育等多个领域", "html_body": "<h1>本周热门项目</h1><h2>AI医疗项目</h2><p>推荐项目：<a href=\"/ideas/abc123\">AI辅助诊断系统</a></p><h2>教育科技</h2><p>推荐项目：<a href=\"/ideas/def456\">智能学习平台</a></p><p>更多信息请访问<a href=\"https://aihehuo.com\">爱合伙官网</a></p>", "mentioned_idea_ids": ["abc123", "def456"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Differences from WeChat Article:
+# ✅ Hyperlinks ARE ALLOWED in AI reports (<a> tags)
+# ✅ Can mention users via mentioned_user_ids (use ID strings, not numbers)
+# ✅ Can mention projects via mentioned_idea_ids
+# ✅ Reports are displayed on the official website
+# ✅ Field name is "abstract" (not "digest")
+# ✅ Field name is "html_body" (not "body")
 ```
 
 ### Prompt Examples
