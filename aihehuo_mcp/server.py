@@ -20,6 +20,186 @@ AIHEHUO_API_BASE = os.getenv("AIHEHUO_API_BASE", "https://new-api.aihehuo.com")
 AIHEHUO_API_KEY  = os.getenv("AIHEHUO_API_KEY",  "REPLACE_ME")
 CURRENT_USER_ID  = os.getenv("CURRENT_USER_ID",  "REPLACE_ME")
 
+# === 微信文章HTML模板 ===
+WECHAT_ARTICLE_TEMPLATE = """<!-- 微信公众号文章HTML模板 - 爱合伙创业者推荐 -->
+
+<div style="max-width: 677px; margin: 0 auto; background: white; overflow: hidden;">
+    
+    <!-- ========== 头部区域 ========== -->
+    <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 30px 20px; text-align: center;">
+        <h1 style="font-size: 1.6em; margin-bottom: 8px; font-weight: 600; line-height: 1.4;">🎯 【文章主标题】</h1>
+        <div style="font-size: 0.95em; opacity: 0.95; margin-top: 5px;">【副标题，如：10月10日新增创业者精选】</div>
+    </div>
+    
+    <div style="padding: 25px 18px;">
+        
+        <!-- ========== 数据概览区域 ========== -->
+        <div style="margin-bottom: 35px;">
+            <h2 style="font-size: 1.35em; color: #2c3e50; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 2px solid #ff6b6b; font-weight: 600;">
+                <span style="margin-right: 6px;">📊</span>【章节标题，如：10月10日新增创业者画像】
+            </h2>
+            
+            <div style="background: #fafafa; padding: 20px; border-radius: 8px; margin-bottom: 25px; font-size: 0.95em;">
+                <p style="margin-bottom: 12px; line-height: 1.8;">【开场介绍段落】</p>
+                
+                <h3 style="color: #2c3e50; margin-bottom: 12px; font-size: 1.1em; font-weight: 600;">【小标题】</h3>
+                <p style="margin-bottom: 12px; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">【数据维度1】：</strong>【数据描述内容】
+                </p>
+                <p style="margin-bottom: 12px; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">【数据维度2】：</strong>【数据描述内容】
+                </p>
+                <p style="margin-bottom: 12px; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">【数据维度3】：</strong>【数据描述内容】
+                </p>
+                <p style="margin-bottom: 12px; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">【数据维度4】：</strong>【数据描述内容】
+                </p>
+            </div>
+        </div>
+        
+        <!-- ========== 带项目创始人部分 ========== -->
+        <div style="margin-bottom: 35px;">
+            <h2 style="font-size: 1.35em; color: #2c3e50; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 2px solid #ff6b6b; font-weight: 600;">
+                <span style="margin-right: 6px;">🚀</span>【章节标题，如：带项目的典型创始人】
+            </h2>
+            
+            <!-- === 创始人卡片模板 - 开始 === -->
+            <div style="background: #fafafa; border-left: 3px solid #ff6b6b; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
+                
+                <!-- 用户头部信息 -->
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+                        <div style="font-size: 1.25em; font-weight: 600; color: #2c3e50;">【用户姓名】</div>
+                        <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 3px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 500;">【创业号8位数字】</div>
+                    </div>
+                    <div style="background: #10b981; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500; display: inline-block;">带项目创始人</div>
+                </div>
+                
+                <!-- 项目标题 -->
+                <div style="font-size: 1.05em; color: #374151; margin-bottom: 12px; font-weight: 600; line-height: 1.6;">
+                    【emoji】 【项目名称/方向描述】
+                </div>
+                
+                <!-- 创业者背景 -->
+                <div style="margin-bottom: 10px; font-size: 0.95em; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">创业者背景：</strong>【工作经历、教育背景、行业经验等】
+                </div>
+                
+                <!-- 项目亮点 -->
+                <div style="background: #fff9e6; border-left: 3px solid #fbbf24; padding: 12px; margin: 12px 0; border-radius: 4px; font-size: 0.95em; line-height: 1.8;">
+                    <strong>💡 项目亮点：</strong>【项目的核心优势、商业模式、市场机会等】
+                </div>
+                
+                <!-- 寻找资源 -->
+                <div style="margin-bottom: 10px; font-size: 0.95em; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">🔍 寻找资源：</strong>【需要什么类型的合伙人或资源】
+                </div>
+                
+                <!-- 联想点 -->
+                <div style="background: #eff6ff; border-left: 3px solid #3b82f6; padding: 12px; margin: 12px 0; border-radius: 4px; font-size: 0.95em; line-height: 1.8;">
+                    <strong>🎯 联想点：</strong>【适合什么样的合伙人、市场分析、合作建议等】
+                </div>
+            </div>
+            <!-- === 创始人卡片模板 - 结束 === -->
+            
+            <!-- 复制上面的卡片结构，添加更多创始人 -->
+            
+        </div>
+        
+        <!-- ========== 找项目合伙人部分 ========== -->
+        <div style="margin-bottom: 35px;">
+            <h2 style="font-size: 1.35em; color: #2c3e50; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 2px solid #ff6b6b; font-weight: 600;">
+                <span style="margin-right: 6px;">🤝</span>【章节标题，如：寻找项目的优质合伙人】
+            </h2>
+            
+            <!-- === 合伙人卡片模板 - 开始 === -->
+            <div style="background: #fafafa; border-left: 3px solid #ff6b6b; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
+                
+                <!-- 用户头部信息 -->
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+                        <div style="font-size: 1.25em; font-weight: 600; color: #2c3e50;">【用户姓名】</div>
+                        <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 3px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 500;">【创业号8位数字】</div>
+                    </div>
+                    <div style="background: #3b82f6; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 500; display: inline-block;">找项目合伙人</div>
+                </div>
+                
+                <!-- 合伙人定位 -->
+                <div style="font-size: 1.05em; color: #374151; margin-bottom: 12px; font-weight: 600; line-height: 1.6;">
+                    【emoji】 【合伙人定位描述】
+                </div>
+                
+                <!-- 背景介绍 -->
+                <div style="margin-bottom: 10px; font-size: 0.95em; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">背景：</strong>【教育背景、工作经历、创业经历等】
+                </div>
+                
+                <!-- 优势技能 -->
+                <div style="margin-bottom: 10px; font-size: 0.95em; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">优势：</strong>【核心技能、资源、经验等】
+                </div>
+                
+                <!-- 寻找诉求 -->
+                <div style="margin-bottom: 10px; font-size: 0.95em; line-height: 1.8;">
+                    <strong style="color: #ff6b6b; font-weight: 600;">诉求：</strong>【想找什么类型的项目或创始人】
+                </div>
+                
+                <!-- 适配项目 -->
+                <div style="background: #fff9e6; border-left: 3px solid #fbbf24; padding: 12px; margin: 12px 0; border-radius: 4px; font-size: 0.95em; line-height: 1.8;">
+                    <strong>💡 适配项目：</strong>【适合加入哪些类型的项目】
+                </div>
+                
+                <!-- 联想点 -->
+                <div style="background: #eff6ff; border-left: 3px solid #3b82f6; padding: 12px; margin: 12px 0; border-radius: 4px; font-size: 0.95em; line-height: 1.8;">
+                    <strong>🎯 联想点：</strong>【这位合伙人的特殊价值、适合的创始人类型等】
+                </div>
+            </div>
+            <!-- === 合伙人卡片模板 - 结束 === -->
+            
+            <!-- 复制上面的卡片结构，添加更多合伙人 -->
+            
+        </div>
+        
+        <!-- ========== 数据观察/总结区域 ========== -->
+        <div style="margin-bottom: 35px;">
+            <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin-top: 25px;">
+                <h3 style="color: #059669; margin-bottom: 15px; font-size: 1.2em; font-weight: 600;">💡 【观察标题，如：数据观察】</h3>
+                
+                <ul style="list-style: none; padding-left: 0;">
+                    <li style="padding: 8px 0 8px 20px; position: relative; line-height: 1.8; font-size: 0.95em;">
+                        <span style="position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 1.2em;">•</span>
+                        <strong>【观察点标题】：</strong>【观察内容描述】
+                    </li>
+                    <li style="padding: 8px 0 8px 20px; position: relative; line-height: 1.8; font-size: 0.95em;">
+                        <span style="position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 1.2em;">•</span>
+                        <strong>【观察点标题】：</strong>【观察内容描述】
+                    </li>
+                    <li style="padding: 8px 0 8px 20px; position: relative; line-height: 1.8; font-size: 0.95em;">
+                        <span style="position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 1.2em;">•</span>
+                        <strong>【观察点标题】：</strong>【观察内容描述】
+                    </li>
+                    <li style="padding: 8px 0 8px 20px; position: relative; line-height: 1.8; font-size: 0.95em;">
+                        <span style="position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 1.2em;">•</span>
+                        <strong>【观察点标题】：</strong>【观察内容描述】
+                    </li>
+                    <li style="padding: 8px 0 8px 20px; position: relative; line-height: 1.8; font-size: 0.95em;">
+                        <span style="position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 1.2em;">•</span>
+                        <strong>【观察点标题】：</strong>【观察内容描述】
+                    </li>
+                </ul>
+                
+                <!-- 温馨提示框 -->
+                <div style="margin-top: 20px; padding: 15px; background: white; border-radius: 6px; border-left: 3px solid #059669;">
+                    <strong style="color: #059669; font-size: 1em;">📌 【提示标题】</strong>
+                    <p style="margin-top: 8px; font-size: 0.95em; line-height: 1.8;">【提示内容描述】</p>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>"""
+
 # === 定义请求/响应模型 ===
 class SearchMembersParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
@@ -65,8 +245,8 @@ class CreateAIReportParams(BaseModel):
     mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
     mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
-# === 简单的 MCP 服务器实现 ===
-class SimpleMCPServer:
+# === 爱合伙 MCP 服务器实现 ===
+class AihehuoMCPServer:
     def __init__(self):
         self.tools = {
             "server_info": {
@@ -1000,7 +1180,8 @@ class SimpleMCPServer:
                     result = {
                         "total_users": len(all_users),
                         "pages_fetched": min(page, 10),
-                        "users": all_users
+                        "users": all_users,
+                        "html_body_template": WECHAT_ARTICLE_TEMPLATE
                     }
                     
                     # Properly encode the result as UTF-8 string
@@ -1210,7 +1391,7 @@ class SimpleMCPServer:
 
 # === 主入口（STDIO）===
 async def main() -> None:
-    server = SimpleMCPServer()
+    server = AihehuoMCPServer()
     
     # 从 stdin 读取请求，向 stdout 写入响应
     while True:
