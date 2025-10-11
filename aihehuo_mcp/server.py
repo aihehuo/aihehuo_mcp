@@ -1155,15 +1155,7 @@ class AihehuoMCPServer:
                                 # Filter to only include specified fields
                                 filtered_users = []
                                 for user in data["data"]:
-                                    filtered_user = {
-                                        "created_at_actual": user.get("created_at_actual"),
-                                        "last_accessed_at_actual": user.get("last_accessed_at_actual"),
-                                        "id": user.get("id"),
-                                        "name": user.get("name"),
-                                        "description": user.get("description"),
-                                        "page_url": user.get("page_url")
-                                    }
-                                    filtered_users.append(filtered_user)
+                                    filtered_users.append(user)
                                 
                                 all_users.extend(filtered_users)
                                 
