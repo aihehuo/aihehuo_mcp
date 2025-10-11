@@ -55,7 +55,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_current_user_profile()` - Get current user complete profile information
    - `get_current_user_ideas(params)` - Get current user's ideas/projects
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
-   - `fetch_new_users()` - Fetch new users list (10 pages, 200 per page, filtered fields)
+   - `fetch_new_users()` - Fetch new users list (3 pages, 50 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body with hyperlinks allowed, mentioned users/ideas)
@@ -253,7 +253,7 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "ge
 
 ### Fetch New Users Examples
 ```bash
-# Fetch new users (10 pages, 200 per page, filtered fields)
+# Fetch new users (3 pages, 50 per page, filtered fields - max 150 users)
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "fetch_new_users", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 

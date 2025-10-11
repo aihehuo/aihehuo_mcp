@@ -208,7 +208,7 @@ class SimpleMCPServer:
             },
             "fetch_new_users": {
                 "name": "fetch_new_users",
-                "description": "获取新用户列表，分页获取10页数据并合并",
+                "description": "获取新用户列表，分页获取3页数据并合并（每页50个用户）",
                 "inputSchema": {
                     "type": "object",
                     "properties": {},
@@ -530,10 +530,10 @@ class SimpleMCPServer:
                         "paginate": params.paginate,
                         "vector_search": True
                     }
-                    headers = {
-                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
+    headers = {
+        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
                         "User-Agent": "LLM_AGENT"
                     }
 
@@ -578,8 +578,8 @@ class SimpleMCPServer:
                 try:
                     params = SearchIdeasParams(**arguments)
                     
-                    payload = {
-                        "query": params.query,
+    payload = {
+        "query": params.query,
                         "paginate": params.paginate,
                         "vector_search": True
                     }
@@ -953,15 +953,15 @@ class SimpleMCPServer:
                         "User-Agent": "LLM_AGENT"
                     }
 
-                    # Fetch 10 pages of data with per=200
+                    # Fetch 3 pages of data with per=50
                     all_users = []
-                    for page in range(1, 11):
+                    for page in range(1, 4):
                         try:
                             url = f"{AIHEHUO_API_BASE}/users/new_users"
                             payload = {
                                 "paginate": {
                                     "page": page,
-                                    "per": 200
+                                    "per": 50
                                 }
                             }
                             
@@ -987,8 +987,8 @@ class SimpleMCPServer:
                                 
                                 all_users.extend(filtered_users)
                                 
-                                # If we get less than 200 users, we've reached the end
-                                if len(data["data"]) < 200:
+                                # If we get less than 50 users, we've reached the end
+                                if len(data["data"]) < 50:
                                     break
                                     
                         except Exception as e:
@@ -1172,7 +1172,7 @@ class SimpleMCPServer:
                         }
                     }
                     
-                except Exception as e:
+    except Exception as e:
                     error_result = {
                         "title": arguments.get("title", ""),
                         "error": str(e),
