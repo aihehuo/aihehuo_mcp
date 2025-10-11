@@ -530,10 +530,10 @@ class SimpleMCPServer:
                         "paginate": params.paginate,
                         "vector_search": True
                     }
-    headers = {
-        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
                         "User-Agent": "LLM_AGENT"
                     }
 
@@ -578,8 +578,8 @@ class SimpleMCPServer:
                 try:
                     params = SearchIdeasParams(**arguments)
                     
-    payload = {
-        "query": params.query,
+                    payload = {
+                        "query": params.query,
                         "paginate": params.paginate,
                         "vector_search": True
                     }
@@ -1172,7 +1172,7 @@ class SimpleMCPServer:
                         }
                     }
                     
-    except Exception as e:
+                except Exception as e:
                     error_result = {
                         "title": arguments.get("title", ""),
                         "error": str(e),
