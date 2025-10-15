@@ -325,7 +325,8 @@ class AihehuoMCPServer:
                                 "page": {"type": "integer", "default": 1},
                                 "per": {"type": "integer", "default": 10}
                             },
-                            "default": {"page": 1, "per": 10}
+                            "default": {"page": 1, "per": 10},
+                            "description": "分页参数: page: 页码(>=1), per: 每页数量(>=10)"
                         }
                     },
                     "required": ["group_id"]
