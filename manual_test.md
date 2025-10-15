@@ -58,7 +58,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `fetch_new_users()` - Fetch new users list (3 pages, 50 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
-   - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body with hyperlinks allowed, mentioned users/ideas)
+   - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -100,7 +100,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing)
-- **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing)
+- **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
@@ -117,8 +117,10 @@ All API requests to the 爱合伙 backend include the following headers:
 | **Hyperlinks** | ❌ NOT allowed (`<a>` tags forbidden) | ✅ Allowed (can include `<a>` tags) |
 | **User Mentions** | ❌ Not supported | ✅ Supported via `mentioned_user_ids` (ID strings) |
 | **Idea Mentions** | ❌ Not supported | ✅ Supported via `mentioned_idea_ids` |
-| **Field Names** | `title`, `digest`, `body` | `title`, `abstract`, `html_body` |
+| **Field Names** | `title`, `digest`, `body` | `title`, `abstract`, `html_body` OR `html_file_path` |
+| **File Upload** | ❌ Not supported | ✅ Supported via `html_file_path` (uploads complete HTML file) |
 | **API Endpoint** | `POST /articles/draft_wechat_article` | `POST /ai_reports` |
+| **Content Type** | JSON only | JSON (`html_body`) or Multipart (`html_file_path`) |
 | **Use Case** | WeChat social media content | In-depth analysis and reports on website |
 
 **When to use `submit_wechat_article_draft`:**
@@ -296,6 +298,47 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "cr
 # Create an AI report with idea mentions and hyperlinks
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "本周热门创业项目精选", "abstract": "精选本周最具潜力的创业项目，涵盖AI、电商、教育等多个领域", "html_body": "<h1>本周热门项目</h1><h2>AI医疗项目</h2><p>推荐项目：<a href=\"/ideas/abc123\">AI辅助诊断系统</a></p><h2>教育科技</h2><p>推荐项目：<a href=\"/ideas/def456\">智能学习平台</a></p><p>更多信息请访问<a href=\"https://aihehuo.com\">爱合伙官网</a></p>", "mentioned_idea_ids": ["abc123", "def456"]}}}' | uvx --from . python -m aihehuo_mcp.server
 
+# ===== Testing with HTML File Upload =====
+
+# First, create a test HTML file
+cat > /tmp/test_report.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Report</title>
+</head>
+<body>
+    <h1>测试报告：AI创业生态分析</h1>
+    <h2>概述</h2>
+    <p>这是一个通过文件上传创建的测试报告。</p>
+    <h2>重点内容</h2>
+    <ul>
+        <li>人工智能技术发展趋势</li>
+        <li>创业者案例分析</li>
+        <li>投资机会展望</li>
+    </ul>
+    <h2>相关链接</h2>
+    <p>了解更多请访问 <a href="https://aihehuo.com">爱合伙官网</a></p>
+</body>
+</html>
+EOF
+
+# Upload AI report with HTML file (without mentions)
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "AI创业生态分析（文件上传测试）", "abstract": "通过html_file_path参数上传完整HTML文件的测试报告", "html_file_path": "/tmp/test_report.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload AI report with HTML file and user mentions
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "创业者推荐报告（文件上传）", "abstract": "包含创业者提及的完整HTML报告", "html_file_path": "/tmp/test_report.html", "mentioned_user_ids": ["12345", "67890"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload AI report with HTML file and both user/idea mentions
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "综合分析报告（文件上传）", "abstract": "包含用户和项目提及的完整HTML报告", "html_file_path": "/tmp/test_report.html", "mentioned_user_ids": ["12345", "67890"], "mentioned_idea_ids": ["abc123", "def456"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: both html_body and html_file_path provided (should fail)
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "错误测试", "abstract": "测试同时提供两个HTML参数", "html_body": "<h1>Test</h1>", "html_file_path": "/tmp/test_report.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: file not found
+echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "create_ai_report", "arguments": {"title": "文件不存在测试", "abstract": "测试文件路径不存在的情况", "html_file_path": "/tmp/nonexistent_file.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
 # Key Differences from WeChat Article:
 # ✅ Hyperlinks ARE ALLOWED in AI reports (<a> tags)
 # ✅ Can mention users via mentioned_user_ids (use ID strings, not numbers)
@@ -303,6 +346,8 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "cr
 # ✅ Reports are displayed on the official website
 # ✅ Field name is "abstract" (not "digest")
 # ✅ Field name is "html_body" (not "body")
+# ✅ NEW: Can upload complete HTML file via "html_file_path" parameter
+# ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
 ```
 
 ### Prompt Examples

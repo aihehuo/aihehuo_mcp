@@ -241,7 +241,8 @@ class SubmitWechatArticleDraftParams(BaseModel):
 class CreateAIReportParams(BaseModel):
     title: str = Field(..., description="报告标题")
     abstract: str = Field(..., description="报告摘要/简介")
-    html_body: str = Field(..., description="报告正文HTML内容")
+    html_body: Optional[str] = Field(None, description="报告正文HTML内容（与html_file_path二选一）")
+    html_file_path: Optional[str] = Field(None, description="HTML文件路径（与html_body二选一，用于大型HTML内容）")
     mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
     mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
@@ -433,7 +434,7 @@ class AihehuoMCPServer:
             },
             "create_ai_report": {
                 "name": "create_ai_report",
-                "description": "创建AI生成的报告并在官网展示。与微信文章不同，报告可以包含超链接，并可以关联提及的用户和项目",
+                "description": "创建AI生成的报告并在官网展示。与微信文章不同，报告可以包含超链接，并可以关联提及的用户和项目。支持直接提供HTML内容或提供HTML文件路径",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -447,7 +448,11 @@ class AihehuoMCPServer:
                         },
                         "html_body": {
                             "type": "string",
-                            "description": "报告正文HTML内容（可以包含超链接）"
+                            "description": "报告正文HTML内容（可以包含超链接）。与html_file_path二选一"
+                        },
+                        "html_file_path": {
+                            "type": "string",
+                            "description": "HTML文件的绝对路径。当HTML内容太大时使用此参数。与html_body二选一"
                         },
                         "mentioned_user_ids": {
                             "type": "array",
@@ -466,7 +471,7 @@ class AihehuoMCPServer:
                             "default": []
                         }
                     },
-                    "required": ["title", "abstract", "html_body"]
+                    "required": ["title", "abstract"]
                 }
             }
         }
@@ -1308,35 +1313,129 @@ class AihehuoMCPServer:
             elif tool_name == "create_ai_report":
                 try:
                     params = CreateAIReportParams(**arguments)
-                    
-                    headers = {
-                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                        "User-Agent": "LLM_AGENT"
-                    }
+
+                    # Validate that either html_body or html_file_path is provided
+                    if not params.html_body and not params.html_file_path:
+                        error_result = {
+                            "error": "Missing required parameter",
+                            "message": "Either html_body or html_file_path must be provided"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+
+                    # If both are provided, prefer html_body
+                    if params.html_body and params.html_file_path:
+                        error_result = {
+                            "error": "Conflicting parameters",
+                            "message": "Only one of html_body or html_file_path should be provided, not both"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
 
                     # Build URL for creating AI report: /ai_reports
                     url = f"{AIHEHUO_API_BASE}/ai_reports"
-                    
-                    # Prepare payload
-                    payload = {
-                        "title": params.title,
-                        "abstract": params.abstract,
-                        "html_body": params.html_body,
-                        "mentioned_user_ids": params.mentioned_user_ids,
-                        "mentioned_idea_ids": params.mentioned_idea_ids
-                    }
-                    
-                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+
+                    # Use different request methods based on whether file or body is provided
+                    if params.html_file_path:
+                        # Upload file using multipart/form-data
+                        try:
+                            # Verify file exists
+                            if not os.path.exists(params.html_file_path):
+                                error_result = {
+                                    "error": "File not found",
+                                    "message": f"HTML file not found at path: {params.html_file_path}"
+                                }
+                                error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                                return {
+                                    "jsonrpc": "2.0",
+                                    "id": request_id,
+                                    "result": {
+                                        "content": [{"type": "text", "text": error_text}]
+                                    }
+                                }
+
+                            headers = {
+                                "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                                "Accept": "application/json",
+                                "User-Agent": "LLM_AGENT"
+                            }
+
+                            # Prepare multipart form data with ai_report schema
+                            with open(params.html_file_path, 'rb') as f:
+                                files = {
+                                    'ai_report[html_file]': ('report.html', f, 'text/html')
+                                }
+                                
+                                # Build form data with proper array handling for Rails
+                                # Rails expects array fields as multiple 'field[]' entries
+                                data = [
+                                    ('ai_report[title]', params.title),
+                                    ('ai_report[abstract]', params.abstract)
+                                ]
+                                
+                                # Add array fields - each item as separate field with [] notation
+                                for user_id in params.mentioned_user_ids:
+                                    data.append(('ai_report[mentioned_user_ids][]', user_id))
+                                
+                                for idea_id in params.mentioned_idea_ids:
+                                    data.append(('ai_report[mentioned_idea_ids][]', idea_id))
+
+                                resp = requests.post(url, headers=headers, files=files, data=data, timeout=30)
+
+                        except Exception as file_error:
+                            error_result = {
+                                "error": "File upload error",
+                                "message": f"Failed to upload HTML file: {str(file_error)}"
+                            }
+                            error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                            return {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "result": {
+                                    "content": [{"type": "text", "text": error_text}]
+                                }
+                            }
+                    else:
+                        # Use JSON request with html_body
+                        headers = {
+                            "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "User-Agent": "LLM_AGENT"
+                        }
+
+                        payload = {
+                            "ai_report": {
+                                "title": params.title,
+                                "abstract": params.abstract,
+                                "html_body": params.html_body,
+                                "mentioned_user_ids": params.mentioned_user_ids,
+                                "mentioned_idea_ids": params.mentioned_idea_ids
+                            }
+                        }
+
+                        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+
                     resp.raise_for_status()
                     # Ensure response is decoded as UTF-8
                     resp.encoding = 'utf-8'
                     data = resp.json()
-                    
+
                     # Properly encode the JSON data as UTF-8 string
                     json_text = json.dumps(data, ensure_ascii=False, indent=2)
-                    
+
                     return {
                         "jsonrpc": "2.0",
                         "id": request_id,
@@ -1344,7 +1443,7 @@ class AihehuoMCPServer:
                             "content": [{"type": "text", "text": json_text}]
                         }
                     }
-                    
+
                 except Exception as e:
                     error_result = {
                         "title": arguments.get("title", ""),
