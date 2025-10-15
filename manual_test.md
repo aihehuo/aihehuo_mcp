@@ -59,6 +59,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_user_details(params)` - Get detailed information about a specific user
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
+   - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -101,11 +102,12 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
+- **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All thirteen tools, prompts, and resources should be listed in their respective list responses
+- All fourteen tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -348,6 +350,33 @@ echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "cr
 # ✅ Field name is "html_body" (not "body")
 # ✅ NEW: Can upload complete HTML file via "html_file_path" parameter
 # ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
+```
+
+### Get Latest 24h Ideas Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Get latest ideas published in the past 24 hours (default pagination)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_latest_24h_ideas", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get latest ideas with custom pagination (page 1, 20 per page)
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_latest_24h_ideas", "arguments": {"paginate": {"page": 1, "per": 20}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get second page of latest ideas
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_latest_24h_ideas", "arguments": {"paginate": {"page": 2, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get large batch (50 per page) - useful for comprehensive analysis
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_latest_24h_ideas", "arguments": {"paginate": {"page": 1, "per": 50}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Features:
+# ✅ Returns LLM-optimized pure text format (not JSON)
+# ✅ Automatically uses "User-Agent: LLM_AGENT" header
+# ✅ Only returns accepted/published projects (filtered)
+# ✅ Sorted by creation time (newest first)
+# ✅ Includes full project details, links, and metadata
+# ✅ Perfect for AI analysis and recommendations
+# ✅ Response includes both data and meta information
 ```
 
 ### Prompt Examples

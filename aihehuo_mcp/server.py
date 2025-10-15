@@ -246,6 +246,9 @@ class CreateAIReportParams(BaseModel):
     mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
     mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
+class GetLatest24hIdeasParams(BaseModel):
+    paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
+
 # === 爱合伙 MCP 服务器实现 ===
 class AihehuoMCPServer:
     def __init__(self):
@@ -472,6 +475,24 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["title", "abstract"]
+                }
+            },
+            "get_latest_24h_ideas": {
+                "name": "get_latest_24h_ideas",
+                "description": "获取过去24小时内最新发布的创业项目/想法。返回LLM优化的纯文本格式，便于AI分析和处理。自动过滤已删除和待审核的项目",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "paginate": {
+                            "type": "object",
+                            "properties": {
+                                "page": {"type": "integer", "default": 1},
+                                "per": {"type": "integer", "default": 10}
+                            },
+                            "default": {"page": 1, "per": 10}
+                        }
+                    },
+                    "required": []
                 }
             }
         }
@@ -1449,6 +1470,59 @@ class AihehuoMCPServer:
                         "title": arguments.get("title", ""),
                         "error": str(e),
                         "message": "Failed to create AI report"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_latest_24h_ideas":
+                try:
+                    params = GetLatest24hIdeasParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"  # Request LLM-optimized format
+                    }
+
+                    # Build URL for latest 24h ideas: /ideas/latest_24h
+                    url = f"{AIHEHUO_API_BASE}/ideas/latest_24h"
+                    
+                    # Add pagination parameters to the request
+                    request_params = {
+                        "paginate[page]": params.paginate.get("page", 1),
+                        "paginate[per]": params.paginate.get("per", 10)
+                    }
+                    
+                    resp = requests.get(url, params=request_params, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "error": str(e),
+                        "message": "Failed to fetch latest 24h ideas",
+                        "paginate": arguments.get("paginate", {})
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
