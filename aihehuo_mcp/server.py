@@ -211,6 +211,7 @@ class SearchIdeasParams(BaseModel):
 
 class GetGroupInfoParams(BaseModel):
     group_id: str = Field(..., description="群组ID")
+    paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
 class UpdateBioParams(BaseModel):
     bio: str = Field(..., description="用户简介")
@@ -317,6 +318,14 @@ class AihehuoMCPServer:
                         "group_id": {
                             "type": "string",
                             "description": "群组ID"
+                        },
+                        "paginate": {
+                            "type": "object",
+                            "properties": {
+                                "page": {"type": "integer", "default": 1},
+                                "per": {"type": "integer", "default": 10}
+                            },
+                            "default": {"page": 1, "per": 10}
                         }
                     },
                     "required": ["group_id"]
@@ -849,10 +858,14 @@ class AihehuoMCPServer:
                         "User-Agent": "LLM_AGENT"
                     }
 
-                    # Build URL with group ID and fixed parameters: /users/e{ID}?text_only=1&all_users=1
-                    url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}?text_only=1&all_users=1"
+                    url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}"
                     
-                    resp = requests.get(url, headers=headers, timeout=15)
+                    # Add pagination parameters to the request
+                    payload = {
+                        "paginate": params.paginate
+                    }
+                    
+                    resp = requests.get(url, json=payload, headers=headers, timeout=15)
                     resp.raise_for_status()
                     # Ensure response is decoded as UTF-8
                     resp.encoding = 'utf-8'

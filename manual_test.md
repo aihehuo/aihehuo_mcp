@@ -21,8 +21,8 @@
    # Test 4: Search ideas (requires API key)
    echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "创业", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
    
-   # Test 5: Get group info (requires API key)
-   echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "1233"}}}' | uvx --from . python -m aihehuo_mcp.server
+   # Test 5: Get group info (requires API key, supports pagination)
+   echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "818", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
    
    # Test 6: Update user bio (requires API key)
    echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "update_bio", "arguments": {"bio": "我是AI创业者，专注于人工智能技术研发"}}}' | uvx --from . python -m aihehuo_mcp.server
@@ -49,7 +49,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `server_info()` - Health check and server information
    - `search_members(params)` - Search for 爱合伙 members using semantic vector search (query must be >5 characters, use coherent sentences)
    - `search_ideas(params)` - Search for 爱合伙 ideas/projects using semantic vector search (use coherent sentences)
-   - `get_group_info(params)` - Get group information and member data
+   - `get_group_info(params)` - Get group information and member data (supports pagination)
    - `update_bio(params)` - Update user profile bio
    - `update_goal(params)` - Update user profile goal
    - `get_current_user_profile()` - Get current user complete profile information
@@ -92,7 +92,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **server_info()** should return server metadata
 - **search_members()** should return search results (or error if API key is invalid)
 - **search_ideas()** should return idea/project search results (or error if API key is invalid)
-- **get_group_info()** should return group information and member data (or error if API key is invalid)
+- **get_group_info()** should return group information and member data with pagination support (or error if API key is invalid)
 - **update_bio()** should update user bio and return success/error response
 - **update_goal()** should update user goal and return success/error response
 - **get_current_user_profile()** should return complete current user profile (or error if API key/CURRENT_USER_ID is invalid)
@@ -188,14 +188,17 @@ echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "se
 
 ### Get Group Info Examples
 ```bash
-# Get group information by ID
+# Get group information by ID (default pagination)
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Get another group's information
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890"}}}' | uvx --from . python -m aihehuo_mcp.server
+# Get group information with custom pagination
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345", "paginate": {"page": 1, "per": 20}}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Test with different group ID format
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+# Get second page of group members
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890", "paginate": {"page": 2, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get group info with larger page size
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123", "paginate": {"page": 1, "per": 50}}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Update Profile Examples
