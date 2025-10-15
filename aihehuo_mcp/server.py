@@ -236,7 +236,8 @@ class GetUserDetailsParams(BaseModel):
 class SubmitWechatArticleDraftParams(BaseModel):
     title: str = Field(..., description="文章标题")
     digest: str = Field(..., description="文章摘要")
-    body: str = Field(..., description="文章正文HTML内容（仅包含body标签内的内容，不能包含超链接<a>标签）")
+    body: Optional[str] = Field(None, description="文章正文HTML内容（仅包含body标签内的内容，不能包含超链接<a>标签）。与body_file二选一")
+    body_file: Optional[str] = Field(None, description="HTML文件路径（与body二选一，用于大型HTML内容）")
 
 class CreateAIReportParams(BaseModel):
     title: str = Field(..., description="报告标题")
@@ -415,7 +416,7 @@ class AihehuoMCPServer:
             },
             "submit_wechat_article_draft": {
                 "name": "submit_wechat_article_draft",
-                "description": "提交微信文章草稿。注意：文章正文不能包含超链接（<a>标签）",
+                "description": "提交微信文章草稿。注意：文章正文不能包含超链接（<a>标签）。支持直接提供HTML内容或提供HTML文件路径",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -429,10 +430,14 @@ class AihehuoMCPServer:
                         },
                         "body": {
                             "type": "string",
-                            "description": "文章正文HTML内容（仅包含body标签内的内容，不包含<body>标签本身，不能包含超链接<a>标签）"
+                            "description": "文章正文HTML内容（仅包含body标签内的内容，不包含<body>标签本身，不能包含超链接<a>标签）。与body_file二选一"
+                        },
+                        "body_file": {
+                            "type": "string",
+                            "description": "HTML文件的绝对路径。当HTML内容太大时使用此参数。与body二选一"
                         }
                     },
-                    "required": ["title", "digest", "body"]
+                    "required": ["title", "digest"]
                 }
             },
             "create_ai_report": {
@@ -1280,25 +1285,107 @@ class AihehuoMCPServer:
             elif tool_name == "submit_wechat_article_draft":
                 try:
                     params = SubmitWechatArticleDraftParams(**arguments)
-                    
-                    headers = {
-                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
-                        "Content-Type": "application/json",
-                        "Accept": "application/json",
-                        "User-Agent": "LLM_AGENT"
-                    }
+
+                    # Validate that either body or body_file is provided
+                    if not params.body and not params.body_file:
+                        error_result = {
+                            "error": "Missing required parameter",
+                            "message": "Either body or body_file must be provided"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+
+                    # If both are provided, return error
+                    if params.body and params.body_file:
+                        error_result = {
+                            "error": "Conflicting parameters",
+                            "message": "Only one of body or body_file should be provided, not both"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
 
                     # Build URL for submitting article draft: /articles/draft_wechat_article
                     url = f"{AIHEHUO_API_BASE}/articles/draft_wechat_article"
-                    
-                    # Prepare payload
-                    payload = {
-                        "title": params.title,
-                        "digest": params.digest,
-                        "body": params.body
-                    }
-                    
-                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+
+                    # Use different request methods based on whether file or body is provided
+                    if params.body_file:
+                        # Upload file using multipart/form-data
+                        try:
+                            # Verify file exists
+                            if not os.path.exists(params.body_file):
+                                error_result = {
+                                    "error": "File not found",
+                                    "message": f"HTML file not found at path: {params.body_file}"
+                                }
+                                error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                                return {
+                                    "jsonrpc": "2.0",
+                                    "id": request_id,
+                                    "result": {
+                                        "content": [{"type": "text", "text": error_text}]
+                                    }
+                                }
+
+                            headers = {
+                                "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                                "Accept": "application/json",
+                                "User-Agent": "LLM_AGENT"
+                            }
+
+                            # Prepare multipart form data (no nested schema)
+                            with open(params.body_file, 'rb') as f:
+                                files = {
+                                    'body_file': ('article.html', f, 'text/html')
+                                }
+                                data = [
+                                    ('title', params.title),
+                                    ('digest', params.digest)
+                                ]
+
+                                resp = requests.post(url, headers=headers, files=files, data=data, timeout=30)
+
+                        except Exception as file_error:
+                            error_result = {
+                                "error": "File upload error",
+                                "message": f"Failed to upload HTML file: {str(file_error)}"
+                            }
+                            error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                            return {
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "result": {
+                                    "content": [{"type": "text", "text": error_text}]
+                                }
+                            }
+                    else:
+                        # Use JSON request with body (no nested schema)
+                        headers = {
+                            "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                            "Content-Type": "application/json",
+                            "Accept": "application/json",
+                            "User-Agent": "LLM_AGENT"
+                        }
+
+                        payload = {
+                            "title": params.title,
+                            "digest": params.digest,
+                            "body": params.body
+                        }
+
+                        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+
                     resp.raise_for_status()
                     # Ensure response is decoded as UTF-8
                     resp.encoding = 'utf-8'

@@ -57,7 +57,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
    - `fetch_new_users()` - Fetch new users list (3 pages, 50 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
-   - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body as HTML without hyperlinks)
+   - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
@@ -100,7 +100,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
-- **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing)
+- **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
@@ -119,10 +119,10 @@ All API requests to the 爱合伙 backend include the following headers:
 | **Hyperlinks** | ❌ NOT allowed (`<a>` tags forbidden) | ✅ Allowed (can include `<a>` tags) |
 | **User Mentions** | ❌ Not supported | ✅ Supported via `mentioned_user_ids` (ID strings) |
 | **Idea Mentions** | ❌ Not supported | ✅ Supported via `mentioned_idea_ids` |
-| **Field Names** | `title`, `digest`, `body` | `title`, `abstract`, `html_body` OR `html_file_path` |
-| **File Upload** | ❌ Not supported | ✅ Supported via `html_file_path` (uploads complete HTML file) |
+| **Field Names** | `title`, `digest`, `body` OR `body_file` | `title`, `abstract`, `html_body` OR `html_file_path` |
+| **File Upload** | ✅ Supported via `body_file` (uploads complete HTML file) | ✅ Supported via `html_file_path` (uploads complete HTML file) |
 | **API Endpoint** | `POST /articles/draft_wechat_article` | `POST /ai_reports` |
-| **Content Type** | JSON only | JSON (`html_body`) or Multipart (`html_file_path`) |
+| **Content Type** | JSON (`body`) or Multipart (`body_file`) | JSON (`html_body`) or Multipart (`html_file_path`) |
 | **Use Case** | WeChat social media content | In-depth analysis and reports on website |
 
 **When to use `submit_wechat_article_draft`:**
@@ -275,11 +275,48 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "ge
 
 ### Submit WeChat Article Draft Examples
 ```bash
-# Submit a simple article draft
+# Submit a simple article draft (inline body)
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "AI创业的新机遇", "digest": "探索人工智能在创业领域的最新应用", "body": "<h1>AI创业的新机遇</h1><p>人工智能正在改变创业生态...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Submit an article with rich HTML content (without hyperlinks)
 echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "2024创业趋势报告", "digest": "深度分析2024年最值得关注的创业方向", "body": "<h1>2024创业趋势报告</h1><h2>市场分析</h2><p>根据最新数据...</p><ul><li>趋势一</li><li>趋势二</li></ul><p><strong>结论：</strong>创业者应该...</p>"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# ===== Testing with HTML File Upload =====
+
+# First, create a test HTML file for WeChat article (NO hyperlinks!)
+cat > /tmp/wechat_article.html << 'EOF'
+<div style="max-width: 677px; margin: 0 auto; background: white; overflow: hidden;">
+    <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 30px 20px; text-align: center;">
+        <h1 style="font-size: 1.6em; margin-bottom: 8px; font-weight: 600; line-height: 1.4;">🎯 AI创业生态分析</h1>
+        <div style="font-size: 0.95em; opacity: 0.95; margin-top: 5px;">探索人工智能创业的最新趋势</div>
+    </div>
+    
+    <div style="padding: 25px 18px;">
+        <h2 style="font-size: 1.35em; color: #2c3e50; margin-bottom: 18px;">市场概况</h2>
+        <p style="line-height: 1.8; margin-bottom: 15px;">人工智能创业市场持续升温，各类创新应用不断涌现。</p>
+        
+        <h2 style="font-size: 1.35em; color: #2c3e50; margin-bottom: 18px;">主要趋势</h2>
+        <ul style="line-height: 1.8;">
+            <li>大模型应用落地</li>
+            <li>垂直行业AI解决方案</li>
+            <li>AI+传统产业深度融合</li>
+        </ul>
+        
+        <div style="background: #f0fdf4; border-radius: 8px; padding: 20px; margin-top: 25px;">
+            <p style="margin: 0; line-height: 1.8;"><strong>💡 结论：</strong>AI创业正处于黄金时期，机遇与挑战并存。</p>
+        </div>
+    </div>
+</div>
+EOF
+
+# Upload article with HTML file (no hyperlinks allowed!)
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "AI创业生态分析（文件上传）", "digest": "通过body_file参数上传完整HTML文件", "body_file": "/tmp/wechat_article.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: both body and body_file provided (should fail)
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "错误测试", "digest": "测试同时提供两个参数", "body": "<h1>Test</h1>", "body_file": "/tmp/wechat_article.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: file not found
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "submit_wechat_article_draft", "arguments": {"title": "文件不存在测试", "digest": "测试文件路径不存在", "body_file": "/tmp/nonexistent.html"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Important Notes:
 # - Body should only contain HTML content (no <body> tags)
@@ -287,6 +324,8 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "su
 # - Body CANNOT contain hyperlinks (<a> tags) - they will be rejected
 # - Allowed HTML tags: h1-h6, p, strong, em, ul, ol, li, blockquote, etc.
 # - Forbidden HTML tags: <a> (hyperlinks)
+# - NEW: Can upload complete HTML file via "body_file" parameter
+# - Choose ONE: either "body" (for inline HTML) OR "body_file" (for file upload)
 ```
 
 ### Create AI Report Examples
