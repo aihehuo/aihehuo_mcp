@@ -311,7 +311,7 @@ class AihehuoMCPServer:
             },
             "get_group_info": {
                 "name": "get_group_info",
-                "description": "获取群组基本情况和群内所有成员数据",
+                "description": "获取群组基本情况和群内所有成员数据。数据会自动保存为Markdown文件到/tmp目录，返回文件路径。使用read_file工具读取文件内容",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -872,14 +872,62 @@ class AihehuoMCPServer:
                     resp.encoding = 'utf-8'
                     data = resp.json()
                     
-                    # Properly encode the JSON data as UTF-8 string
-                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    # Extract group data from response
+                    group_data = data.get("data", {}).get("group", {})
+                    
+                    # Format as Markdown
+                    md_content = []
+                    
+                    # Only include group info on first page
+                    if params.paginate['page'] == 1:
+                        md_content.append(f"# {group_data.get('title', '群组信息')}\n")
+                        md_content.append(f"**群组ID**: {group_data.get('id', 'N/A')}\n")
+                        md_content.append(f"\n## 群组介绍\n")
+                        md_content.append(f"{group_data.get('intro', 'N/A')}\n")
+                        md_content.append(f"\n## 群组描述\n")
+                        md_content.append(f"{group_data.get('description', 'N/A')}\n")
+                        md_content.append(f"\n## 群友列表\n")
+                    else:
+                        # For pages > 1, only show title and page info
+                        md_content.append(f"# {group_data.get('title', '群组信息')} - 第{params.paginate['page']}页\n")
+                        md_content.append(f"\n## 群友列表（续）\n")
+                    
+                    users = group_data.get("users", [])
+                    if users:
+                        for i, user in enumerate(users, 1):
+                            user_text = user.get("user_text", "")
+                            md_content.append(f"\n### {i}. 群友信息\n")
+                            md_content.append(f"{user_text}\n")
+                    else:
+                        md_content.append("\n暂无群友数据\n")
+                    
+                    # Save to /tmp directory
+                    filename = f"/tmp/group_{params.group_id}_page{params.paginate['page']}.md"
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write('\n'.join(md_content))
+                    
+                    # Return success message with file path
+                    result = {
+                        "success": True,
+                        "message": f"群组数据已保存为Markdown文件",
+                        "file_path": filename,
+                        "group_id": group_data.get('id', 'N/A'),
+                        "group_title": group_data.get('title', 'N/A'),
+                        "total_users": len(users),
+                        "pagination": {
+                            "page": params.paginate['page'],
+                            "per": params.paginate['per']
+                        },
+                        "note": "请使用read_file工具读取该文件以查看完整的群组和群友信息"
+                    }
+                    
+                    result_text = json.dumps(result, ensure_ascii=False, indent=2)
                     
                     return {
                         "jsonrpc": "2.0",
                         "id": request_id,
                         "result": {
-                            "content": [{"type": "text", "text": json_text}]
+                            "content": [{"type": "text", "text": result_text}]
                         }
                     }
                     

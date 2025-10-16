@@ -92,7 +92,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **server_info()** should return server metadata
 - **search_members()** should return search results (or error if API key is invalid)
 - **search_ideas()** should return idea/project search results (or error if API key is invalid)
-- **get_group_info()** should return group information and member data with pagination support (or error if API key is invalid)
+- **get_group_info()** should save group information and member data as Markdown file to /tmp directory and return file path (or error if API key is invalid). The file contains formatted group info and user list. Use read_file to access the content.
 - **update_bio()** should update user bio and return success/error response
 - **update_goal()** should update user goal and return success/error response
 - **get_current_user_profile()** should return complete current user profile (or error if API key/CURRENT_USER_ID is invalid)
@@ -189,16 +189,32 @@ echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "se
 ### Get Group Info Examples
 ```bash
 # Get group information by ID (default pagination)
+# This will save the data as a Markdown file to /tmp/group_12345_page1.md
 echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Get group information with custom pagination
+# File will be saved to /tmp/group_12345_page1.md
 echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345", "paginate": {"page": 1, "per": 20}}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Get second page of group members
+# File will be saved to /tmp/group_67890_page2.md
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890", "paginate": {"page": 2, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Get group info with larger page size
+# File will be saved to /tmp/group_abc123_page1.md
 echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123", "paginate": {"page": 1, "per": 50}}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Important Notes:
+# - The tool returns a JSON response with file_path, group_id, group_title, total_users, and pagination info
+# - The actual group data is saved as a Markdown file in /tmp directory
+# - File naming pattern: /tmp/group_{group_id}_page{page_number}.md
+# - Use read_file tool to read the Markdown file and access the formatted group data
+# - This approach prevents overwhelming the LLM with massive JSON data
+# - Each page is saved as a separate file for easier management
+# - **Only the first page includes group intro and description** - subsequent pages only contain user list
+
+# Example: Read the saved file
+cat /tmp/group_12345_page1.md
 ```
 
 ### Update Profile Examples
