@@ -859,7 +859,7 @@ class AihehuoMCPServer:
                         "User-Agent": "LLM_AGENT"
                     }
 
-                    url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}"
+                    url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}?all_users=1"
                     
                     # Add pagination parameters to the request
                     payload = {
