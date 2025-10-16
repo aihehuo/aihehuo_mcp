@@ -21,8 +21,8 @@
    # Test 4: Search ideas (requires API key)
    echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "search_ideas", "arguments": {"query": "创业", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
    
-   # Test 5: Get group info (requires API key, supports pagination)
-   echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "818", "paginate": {"page": 1, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
+   # Test 5: Get group info (requires API key, fetches all users at once)
+   echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "818"}}}' | uvx --from . python -m aihehuo_mcp.server
    
    # Test 6: Update user bio (requires API key)
    echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "update_bio", "arguments": {"bio": "我是AI创业者，专注于人工智能技术研发"}}}' | uvx --from . python -m aihehuo_mcp.server
@@ -49,7 +49,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `server_info()` - Health check and server information
    - `search_members(params)` - Search for 爱合伙 members using semantic vector search (query must be >5 characters, use coherent sentences)
    - `search_ideas(params)` - Search for 爱合伙 ideas/projects using semantic vector search (use coherent sentences)
-   - `get_group_info(params)` - Get group information and member data (supports pagination)
+   - `get_group_info(params)` - Get group information and all member data at once (saves as Markdown file to /tmp)
    - `update_bio(params)` - Update user profile bio
    - `update_goal(params)` - Update user profile goal
    - `get_current_user_profile()` - Get current user complete profile information
@@ -92,7 +92,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **server_info()** should return server metadata
 - **search_members()** should return search results (or error if API key is invalid)
 - **search_ideas()** should return idea/project search results (or error if API key is invalid)
-- **get_group_info()** should save group information and member data as Markdown file to /tmp directory and return file path (or error if API key is invalid). The file contains formatted group info and user list. Use read_file to access the content.
+- **get_group_info()** should save group information and all member data as Markdown file to /tmp directory and return file path (or error if API key is invalid). The file contains formatted group info and complete user list. Use read_file to access the content.
 - **update_bio()** should update user bio and return success/error response
 - **update_goal()** should update user goal and return success/error response
 - **get_current_user_profile()** should return complete current user profile (or error if API key/CURRENT_USER_ID is invalid)
@@ -188,33 +188,30 @@ echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "se
 
 ### Get Group Info Examples
 ```bash
-# Get group information by ID (default pagination)
-# This will save the data as a Markdown file to /tmp/group_12345_page1.md
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
+# Get group information and all members by ID
+# This will save all data as a Markdown file to /tmp/group_818.md
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "818"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Get group information with custom pagination
-# File will be saved to /tmp/group_12345_page1.md
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345", "paginate": {"page": 1, "per": 20}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Get another group's complete information
+# File will be saved to /tmp/group_12345.md
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "12345"}}}' | uvx --from . python -m aihehuo_mcp.server
 
-# Get second page of group members
-# File will be saved to /tmp/group_67890_page2.md
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890", "paginate": {"page": 2, "per": 10}}}}' | uvx --from . python -m aihehuo_mcp.server
-
-# Get group info with larger page size
-# File will be saved to /tmp/group_abc123_page1.md
-echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "abc123", "paginate": {"page": 1, "per": 50}}}}' | uvx --from . python -m aihehuo_mcp.server
+# Get yet another group
+# File will be saved to /tmp/group_67890.md
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_group_info", "arguments": {"group_id": "67890"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Important Notes:
-# - The tool returns a JSON response with file_path, group_id, group_title, total_users, and pagination info
+# - The tool fetches ALL users at once (no pagination needed)
+# - Returns a JSON response with file_path, group_id, group_title, and total_users
 # - The actual group data is saved as a Markdown file in /tmp directory
-# - File naming pattern: /tmp/group_{group_id}_page{page_number}.md
+# - File naming pattern: /tmp/group_{group_id}.md
+# - File includes: group intro, description, and complete user list
 # - Use read_file tool to read the Markdown file and access the formatted group data
-# - This approach prevents overwhelming the LLM with massive JSON data
-# - Each page is saved as a separate file for easier management
-# - **Only the first page includes group intro and description** - subsequent pages only contain user list
+# - This approach prevents overwhelming the LLM with massive JSON data in the API response
+# - Timeout increased to 30s to handle large groups
 
 # Example: Read the saved file
-cat /tmp/group_12345_page1.md
+cat /tmp/group_818.md
 ```
 
 ### Update Profile Examples

@@ -211,7 +211,6 @@ class SearchIdeasParams(BaseModel):
 
 class GetGroupInfoParams(BaseModel):
     group_id: str = Field(..., description="群组ID")
-    paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
 class UpdateBioParams(BaseModel):
     bio: str = Field(..., description="用户简介")
@@ -311,22 +310,13 @@ class AihehuoMCPServer:
             },
             "get_group_info": {
                 "name": "get_group_info",
-                "description": "获取群组基本情况和群内所有成员数据。数据会自动保存为Markdown文件到/tmp目录，返回文件路径。使用read_file工具读取文件内容",
+                "description": "获取群组基本情况和群内所有成员数据（一次性获取所有用户）。数据会自动保存为Markdown文件到/tmp目录，返回文件路径。使用read_file工具读取文件内容",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "group_id": {
                             "type": "string",
                             "description": "群组ID"
-                        },
-                        "paginate": {
-                            "type": "object",
-                            "properties": {
-                                "page": {"type": "integer", "default": 1},
-                                "per": {"type": "integer", "default": 10}
-                            },
-                            "default": {"page": 1, "per": 10},
-                            "description": "分页参数: page: 页码(>=1), per: 每页数量(>=10)"
                         }
                     },
                     "required": ["group_id"]
@@ -861,12 +851,7 @@ class AihehuoMCPServer:
 
                     url = f"{AIHEHUO_API_BASE}/users/e{params.group_id}?all_users=1"
                     
-                    # Add pagination parameters to the request
-                    payload = {
-                        "paginate": params.paginate
-                    }
-                    
-                    resp = requests.get(url, json=payload, headers=headers, timeout=15)
+                    resp = requests.get(url, headers=headers, timeout=30)
                     resp.raise_for_status()
                     # Ensure response is decoded as UTF-8
                     resp.encoding = 'utf-8'
@@ -877,20 +862,13 @@ class AihehuoMCPServer:
                     
                     # Format as Markdown
                     md_content = []
-                    
-                    # Only include group info on first page
-                    if params.paginate['page'] == 1:
-                        md_content.append(f"# {group_data.get('title', '群组信息')}\n")
-                        md_content.append(f"**群组ID**: {group_data.get('id', 'N/A')}\n")
-                        md_content.append(f"\n## 群组介绍\n")
-                        md_content.append(f"{group_data.get('intro', 'N/A')}\n")
-                        md_content.append(f"\n## 群组描述\n")
-                        md_content.append(f"{group_data.get('description', 'N/A')}\n")
-                        md_content.append(f"\n## 群友列表\n")
-                    else:
-                        # For pages > 1, only show title and page info
-                        md_content.append(f"# {group_data.get('title', '群组信息')} - 第{params.paginate['page']}页\n")
-                        md_content.append(f"\n## 群友列表（续）\n")
+                    md_content.append(f"# {group_data.get('title', '群组信息')}\n")
+                    md_content.append(f"**群组ID**: {group_data.get('id', 'N/A')}\n")
+                    md_content.append(f"\n## 群组介绍\n")
+                    md_content.append(f"{group_data.get('intro', 'N/A')}\n")
+                    md_content.append(f"\n## 群组描述\n")
+                    md_content.append(f"{group_data.get('description', 'N/A')}\n")
+                    md_content.append(f"\n## 群友列表\n")
                     
                     users = group_data.get("users", [])
                     if users:
@@ -902,22 +880,18 @@ class AihehuoMCPServer:
                         md_content.append("\n暂无群友数据\n")
                     
                     # Save to /tmp directory
-                    filename = f"/tmp/group_{params.group_id}_page{params.paginate['page']}.md"
+                    filename = f"/tmp/group_{params.group_id}.md"
                     with open(filename, 'w', encoding='utf-8') as f:
                         f.write('\n'.join(md_content))
                     
                     # Return success message with file path
                     result = {
                         "success": True,
-                        "message": f"群组数据已保存为Markdown文件",
+                        "message": f"群组数据已保存为Markdown文件（包含所有{len(users)}位群友）",
                         "file_path": filename,
                         "group_id": group_data.get('id', 'N/A'),
                         "group_title": group_data.get('title', 'N/A'),
                         "total_users": len(users),
-                        "pagination": {
-                            "page": params.paginate['page'],
-                            "per": params.paginate['per']
-                        },
                         "note": "请使用read_file工具读取该文件以查看完整的群组和群友信息"
                     }
                     
