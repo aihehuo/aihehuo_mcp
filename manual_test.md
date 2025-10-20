@@ -59,6 +59,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_user_details(params)` - Get detailed information about a specific user
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
+   - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
 3. The server will also provide these prompts:
@@ -102,12 +103,13 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
+- **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All fourteen tools, prompts, and resources should be listed in their respective list responses
+- All fifteen tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -404,6 +406,68 @@ echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "cr
 # ✅ Field name is "abstract" (not "digest")
 # ✅ Field name is "html_body" (not "body")
 # ✅ NEW: Can upload complete HTML file via "html_file_path" parameter
+# ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
+```
+
+### Update AI Report Examples
+```bash
+# Update an existing AI report (inline HTML)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "36", "title": "2024年AI创业生态分析报告（更新版）", "abstract": "本报告深度分析了2024年人工智能创业领域的最新发展趋势、投资热点和创新方向", "html_body": "<h1>2024年AI创业生态分析报告（更新版）</h1><h2>市场概况</h2><p>人工智能创业市场持续升温，出现新的增长点...</p><h2>主要趋势</h2><ul><li>大模型应用落地</li><li>垂直行业AI解决方案</li><li>AI与传统产业深度融合</li></ul>"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update AI report with user mentions
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "456", "title": "爱合伙平台优秀创业者推荐（2024Q2）", "abstract": "本报告推荐爱合伙平台上的优秀创业者，分析其创业方向和成功经验", "html_body": "<h1>优秀创业者推荐</h1><p>本期推荐以下创业者：</p><ul><li><a href=\"/users/12345\">张三</a> - AI教育领域</li><li><a href=\"/users/67890\">李四</a> - 智能硬件</li><li><a href=\"/users/11111\">王五</a> - 企业服务</li></ul>", "mentioned_user_ids": ["12345", "67890", "11111"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update AI report with idea mentions and hyperlinks
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "789", "title": "本周热门创业项目精选（更新）", "abstract": "精选本周最具潜力的创业项目，涵盖AI、电商、教育等多个领域", "html_body": "<h1>本周热门项目</h1><h2>AI医疗项目</h2><p>推荐项目：<a href=\"/ideas/abc123\">AI辅助诊断系统</a></p><h2>教育科技</h2><p>推荐项目：<a href=\"/ideas/def456\">智能学习平台</a></p><h2>新增项目</h2><p>推荐项目：<a href=\"/ideas/xyz999\">在线教育平台</a></p><p>更多信息请访问<a href=\"https://aihehuo.com\">爱合伙官网</a></p>", "mentioned_idea_ids": ["abc123", "def456", "xyz999"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# ===== Testing with HTML File Upload =====
+
+# Create an updated HTML file
+cat > /tmp/updated_report.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Updated Report</title>
+</head>
+<body>
+    <h1>更新的报告：AI创业生态分析</h1>
+    <h2>概述</h2>
+    <p>这是一个通过文件上传更新的测试报告，包含最新的市场分析。</p>
+    <h2>重点内容</h2>
+    <ul>
+        <li>人工智能技术发展趋势（2024最新）</li>
+        <li>创业者案例分析（新增案例）</li>
+        <li>投资机会展望（市场预测）</li>
+        <li>政策环境分析（新增）</li>
+    </ul>
+    <h2>相关链接</h2>
+    <p>了解更多请访问 <a href="https://aihehuo.com">爱合伙官网</a></p>
+</body>
+</html>
+EOF
+
+# Update AI report with HTML file (without mentions)
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "999", "title": "AI创业生态分析（文件更新测试）", "abstract": "通过html_file_path参数上传更新的完整HTML文件", "html_file_path": "/tmp/updated_report.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update AI report with HTML file and user mentions
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "888", "title": "创业者推荐报告（文件更新）", "abstract": "包含创业者提及的更新HTML报告", "html_file_path": "/tmp/updated_report.html", "mentioned_user_ids": ["12345", "67890", "11111"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update AI report with HTML file and both user/idea mentions
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "777", "title": "综合分析报告（文件更新）", "abstract": "包含用户和项目提及的更新HTML报告", "html_file_path": "/tmp/updated_report.html", "mentioned_user_ids": ["12345", "67890"], "mentioned_idea_ids": ["abc123", "def456", "xyz999"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: both html_body and html_file_path provided (should fail)
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "666", "title": "错误测试", "abstract": "测试同时提供两个HTML参数", "html_body": "<h1>Test</h1>", "html_file_path": "/tmp/updated_report.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: file not found
+echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "555", "title": "文件不存在测试", "abstract": "测试文件路径不存在的情况", "html_file_path": "/tmp/nonexistent_update.html"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Points for Update:
+# ✅ Must provide report_id (required parameter)
+# ✅ All other parameters same as create_ai_report
+# ✅ Uses PUT method to update existing report
+# ✅ Can update title, abstract, html content, and mentions
+# ✅ Hyperlinks are allowed (<a> tags)
 # ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
 ```
 
