@@ -236,6 +236,9 @@ class GetUserDetailsParams(BaseModel):
 class GetWechatDataParams(BaseModel):
     user_id: str = Field(..., description="用户ID")
 
+class UploadFileParams(BaseModel):
+    file_path: str = Field(..., description="要上传的文件的本地路径（绝对路径）")
+
 class SubmitWechatArticleDraftParams(BaseModel):
     title: str = Field(..., description="文章标题")
     digest: str = Field(..., description="文章摘要")
@@ -438,6 +441,20 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["user_id"]
+                }
+            },
+            "upload_file": {
+                "name": "upload_file",
+                "description": "上传文件到云存储，支持图片、视频、文档等多种文件类型。返回上传后的文件URL",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "要上传的文件的本地绝对路径"
+                        }
+                    },
+                    "required": ["file_path"]
                 }
             },
             "submit_wechat_article_draft": {
@@ -1431,6 +1448,83 @@ class AihehuoMCPServer:
                         "user_id": arguments.get("user_id", "unknown"),
                         "error": str(e),
                         "message": "Failed to fetch wechat data"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "upload_file":
+                try:
+                    params = UploadFileParams(**arguments)
+                    
+                    # Verify file exists
+                    if not os.path.exists(params.file_path):
+                        error_result = {
+                            "error": "File not found",
+                            "message": f"File not found at path: {params.file_path}"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+                    
+                    # Build URL for upload: /micro/upload
+                    url = f"{AIHEHUO_API_BASE}/micro/upload"
+                    
+                    # Get filename from path
+                    filename = os.path.basename(params.file_path)
+                    
+                    # Determine MIME type based on file extension
+                    import mimetypes
+                    mime_type, _ = mimetypes.guess_type(params.file_path)
+                    if mime_type is None:
+                        mime_type = 'application/octet-stream'
+                    
+                    # Upload file using multipart/form-data
+                    with open(params.file_path, 'rb') as f:
+                        files = {
+                            'file': (filename, f, mime_type)
+                        }
+                        
+                        resp = requests.post(url, headers=headers, files=files, timeout=60)
+                    
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "file_path": arguments.get("file_path", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to upload file"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

@@ -58,6 +58,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `fetch_new_users()` - Fetch new users list (3 pages, 50 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
    - `get_wechat_data(params)` - Get user's WeChat related data (wechat remark, groups, nicknames)
+   - `upload_file(params)` - Upload file to cloud storage (images, videos, documents) and get URL
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
@@ -103,6 +104,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
 - **get_wechat_data()** should return user's WeChat data including wechat_remark, wechat_groups, and wechat_group_nicknames (or error if API key/user_id is invalid or user not found)
+- **upload_file()** should upload file to cloud storage and return file URL (or error if API key is invalid, file not found, or upload failed). Supports images, videos, documents, etc.
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
@@ -111,7 +113,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All sixteen tools, prompts, and resources should be listed in their respective list responses
+- All seventeen tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -312,6 +314,42 @@ echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "ge
 #   * wechat_group_nicknames: List of nicknames used in groups
 # - Returns 404 error if user not found
 # - Requires valid API key for authentication
+```
+
+### Upload File Examples
+```bash
+# Upload an image file
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/test_image.jpg"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload a PDF document
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/document.pdf"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload a video file
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/video.mp4"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload any other file type
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/data.xlsx"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: file not found
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/nonexistent.jpg"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Important Notes:
+# - Uploads file to cloud storage (OSS) via POST /micro/upload endpoint
+# - Supports multiple file types: images (jpg, png, gif), videos (mp4, avi), documents (pdf, docx, xlsx), etc.
+# - Returns file URL in format: https://oss-qd.aihehuo.com/{timestamp}_{filename}.{ext}
+# - For images, may include ?r={random} query parameter
+# - Requires valid API key (Bearer token) for authentication
+# - File must exist at the specified path (absolute path required)
+# - MIME type is automatically detected from file extension
+# - Upload timeout is 60 seconds to handle large files
+# - Maximum file size depends on server configuration
+
+# Example: Create a test image file first
+echo "Creating test image file..."
+curl -o /tmp/test_image.jpg https://via.placeholder.com/150
+
+# Then upload it
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "upload_file", "arguments": {"file_path": "/tmp/test_image.jpg"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Submit WeChat Article Draft Examples
