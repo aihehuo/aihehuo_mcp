@@ -233,6 +233,9 @@ class FetchNewUsersParams(BaseModel):
 class GetUserDetailsParams(BaseModel):
     user_id: str = Field(..., description="用户ID")
 
+class GetWechatDataParams(BaseModel):
+    user_id: str = Field(..., description="用户ID")
+
 class SubmitWechatArticleDraftParams(BaseModel):
     title: str = Field(..., description="文章标题")
     digest: str = Field(..., description="文章摘要")
@@ -412,6 +415,20 @@ class AihehuoMCPServer:
             "get_user_details": {
                 "name": "get_user_details",
                 "description": "获取指定用户的详细信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "用户ID"
+                        }
+                    },
+                    "required": ["user_id"]
+                }
+            },
+            "get_wechat_data": {
+                "name": "get_wechat_data",
+                "description": "获取指定用户的微信相关数据，包括微信备注名、加入的微信群组列表、群组昵称等",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1362,6 +1379,58 @@ class AihehuoMCPServer:
                         "user_id": arguments.get("user_id", "unknown"),
                         "error": str(e),
                         "message": "Failed to fetch user details"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_wechat_data":
+                try:
+                    params = GetWechatDataParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for wechat data: /users/get_wechat_data?user_id={user_id}
+                    url = f"{AIHEHUO_API_BASE}/users/get_wechat_data"
+                    
+                    # Add user_id as query parameter
+                    request_params = {
+                        "user_id": params.user_id
+                    }
+                    
+                    resp = requests.get(url, params=request_params, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": arguments.get("user_id", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to fetch wechat data"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

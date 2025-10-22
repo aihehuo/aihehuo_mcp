@@ -57,6 +57,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_idea_details(params)` - Get detailed information about a specific idea/project
    - `fetch_new_users()` - Fetch new users list (3 pages, 50 per page, filtered fields)
    - `get_user_details(params)` - Get detailed information about a specific user
+   - `get_wechat_data(params)` - Get user's WeChat related data (wechat remark, groups, nicknames)
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
@@ -101,6 +102,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_idea_details()** should return detailed idea information (or error if API key/idea_id is invalid)
 - **fetch_new_users()** should return concatenated list of new users with filtered fields (or error if API key is invalid)
 - **get_user_details()** should return detailed user information (or error if API key/user_id is invalid)
+- **get_wechat_data()** should return user's WeChat data including wechat_remark, wechat_groups, and wechat_group_nicknames (or error if API key/user_id is invalid or user not found)
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
@@ -109,7 +111,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All fifteen tools, prompts, and resources should be listed in their respective list responses
+- All sixteen tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -289,6 +291,27 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "ge
 
 # Test with different user IDs
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_user_details", "arguments": {"user_id": "abc123"}}}' | uvx --from . python -m aihehuo_mcp.server
+```
+
+### Get WeChat Data Examples
+```bash
+# Get WeChat data for a specific user by ID
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_wechat_data", "arguments": {"user_id": "1"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get WeChat data for another user
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_wechat_data", "arguments": {"user_id": "123"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get WeChat data for yet another user
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_wechat_data", "arguments": {"user_id": "456"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Important Notes:
+# - Returns user's WeChat related data including:
+#   * user_id: User ID
+#   * wechat_remark: WeChat remark name
+#   * wechat_groups: List of WeChat groups the user has joined (with group titles)
+#   * wechat_group_nicknames: List of nicknames used in groups
+# - Returns 404 error if user not found
+# - Requires valid API key for authentication
 ```
 
 ### Submit WeChat Article Draft Examples
