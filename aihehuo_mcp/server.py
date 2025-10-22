@@ -262,6 +262,11 @@ class UpdateAIReportParams(BaseModel):
     mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
     mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
+class NotifyMentionedUsersParams(BaseModel):
+    report_id: str = Field(..., description="报告ID")
+    intro_text: str = Field(..., description="发送给提及用户的介绍文本")
+    force: bool = Field(default=False, description="是否强制重新通知（默认false）")
+
 class GetLatest24hIdeasParams(BaseModel):
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
@@ -569,6 +574,29 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["report_id", "title", "abstract"]
+                }
+            },
+            "notify_mentioned_users": {
+                "name": "notify_mentioned_users",
+                "description": "通知AI报告中提及的用户。向报告中关联的用户发送通知消息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {
+                            "type": "string",
+                            "description": "报告ID"
+                        },
+                        "intro_text": {
+                            "type": "string",
+                            "description": "发送给提及用户的介绍文本"
+                        },
+                        "force": {
+                            "type": "boolean",
+                            "description": "是否强制重新通知（默认false）",
+                            "default": False
+                        }
+                    },
+                    "required": ["report_id", "intro_text"]
                 }
             },
             "get_latest_24h_ideas": {
@@ -1963,6 +1991,59 @@ class AihehuoMCPServer:
                         "title": arguments.get("title", ""),
                         "error": str(e),
                         "message": "Failed to update AI report"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "notify_mentioned_users":
+                try:
+                    params = NotifyMentionedUsersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for notifying mentioned users: /ai_reports/{report_id}/notify_mentioned_users
+                    url = f"{AIHEHUO_API_BASE}/micro/ai_reports/{params.report_id}/notify_mentioned_users"
+                    
+                    payload = {
+                        "intro_text": params.intro_text,
+                        "force": params.force
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "report_id": arguments.get("report_id", ""),
+                        "intro_text": arguments.get("intro_text", ""),
+                        "error": str(e),
+                        "message": "Failed to notify mentioned users"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

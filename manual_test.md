@@ -62,6 +62,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
+   - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
 3. The server will also provide these prompts:
@@ -108,6 +109,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
+- **notify_mentioned_users()** should notify users mentioned in AI report and return success response (or error if API key/report_id is invalid or fields are missing)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
@@ -481,6 +483,12 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "up
 # Update AI report with idea mentions and hyperlinks
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "update_ai_report", "arguments": {"report_id": "789", "title": "本周热门创业项目精选（更新）", "abstract": "精选本周最具潜力的创业项目，涵盖AI、电商、教育等多个领域", "html_body": "<h1>本周热门项目</h1><h2>AI医疗项目</h2><p>推荐项目：<a href=\"/ideas/abc123\">AI辅助诊断系统</a></p><h2>教育科技</h2><p>推荐项目：<a href=\"/ideas/def456\">智能学习平台</a></p><h2>新增项目</h2><p>推荐项目：<a href=\"/ideas/xyz999\">在线教育平台</a></p><p>更多信息请访问<a href=\"https://aihehuo.com\">爱合伙官网</a></p>", "mentioned_idea_ids": ["abc123", "def456", "xyz999"]}}}' | uvx --from . python -m aihehuo_mcp.server
 
+# Notify mentioned users about the AI report
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "36", "intro_text": "您好！您被提及在我们的最新AI创业生态分析报告中，请查看详细内容。"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Force re-notify mentioned users
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "456", "intro_text": "重要更新：我们的优秀创业者推荐报告已更新，您被重新推荐！", "force": true}}}' | uvx --from . python -m aihehuo_mcp.server
+
 # ===== Testing with HTML File Upload =====
 
 # Create an updated HTML file
@@ -530,6 +538,35 @@ echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "up
 # ✅ Can update title, abstract, html content, and mentions
 # ✅ Hyperlinks are allowed (<a> tags)
 # ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
+```
+
+### Notify Mentioned Users Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Notify users mentioned in an AI report (basic notification)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "您好！您被提及在我们的最新AI创业生态分析报告中，请查看详细内容。"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Force re-notify mentioned users (even if already notified)
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "重要更新：我们的优秀创业者推荐报告已更新，您被重新推荐！", "force": true}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Notify with detailed introduction text
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "尊敬的用户，我们很高兴地通知您，您在我们的《本周热门创业项目精选》报告中被特别推荐。您的项目展现了卓越的创新性和市场潜力，我们相信这将为您带来更多合作机会。请点击查看完整报告内容。"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: missing required parameters
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "123"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid report_id
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "invalid_id", "intro_text": "测试无效报告ID"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Points for Notify:
+# ✅ Must provide report_id (required parameter)
+# ✅ Must provide intro_text (required parameter)
+# ✅ force parameter is optional (default: false)
+# ✅ Uses POST method to /micro/ai_reports/{report_id}/notify_mentioned_users
+# ✅ Sends notification to all users mentioned in the report
+# ✅ force=true allows re-notification even if already notified
 ```
 
 ### Get Latest 24h Ideas Examples
