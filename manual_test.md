@@ -63,6 +63,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
    - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification)
+   - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
 3. The server will also provide these prompts:
@@ -110,6 +111,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **notify_mentioned_users()** should notify users mentioned in AI report and return success response (or error if API key/report_id is invalid or fields are missing)
+- **convert_numbers_to_ids()** should convert user numbers array to user IDs array and return results with found status (or error if API key is invalid or numbers array is empty)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
@@ -567,6 +569,35 @@ echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "no
 # ✅ Uses POST method to /micro/ai_reports/{report_id}/notify_mentioned_users
 # ✅ Sends notification to all users mentioned in the report
 # ✅ force=true allows re-notification even if already notified
+```
+
+### Convert Numbers to IDs Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Convert user numbers to IDs (basic example)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "convert_numbers_to_ids", "arguments": {"numbers": [9200001, 9200002, 123456]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Convert single user number
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "convert_numbers_to_ids", "arguments": {"numbers": [9200001]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Convert multiple user numbers (some may not exist)
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "convert_numbers_to_ids", "arguments": {"numbers": [9200001, 9200002, 9200003, 9999999, 123456]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: empty numbers array
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "convert_numbers_to_ids", "arguments": {"numbers": []}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid numbers (non-integer)
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "convert_numbers_to_ids", "arguments": {"numbers": ["invalid", 9200001]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Points for Convert:
+# ✅ Must provide numbers array (required parameter)
+# ✅ Each number should be an integer (user number)
+# ✅ Uses POST method to /users/convert_numbers_to_ids
+# ✅ Returns results array with number, user_id, and found status
+# ✅ found=true means user exists, found=false means user not found
+# ✅ user_id will be null if user not found
 ```
 
 ### Get Latest 24h Ideas Examples

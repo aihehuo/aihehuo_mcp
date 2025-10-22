@@ -267,6 +267,9 @@ class NotifyMentionedUsersParams(BaseModel):
     intro_text: str = Field(..., description="发送给提及用户的介绍文本")
     force: bool = Field(default=False, description="是否强制重新通知（默认false）")
 
+class ConvertNumbersToIdsParams(BaseModel):
+    numbers: List[int] = Field(..., description="用户编号数组")
+
 class GetLatest24hIdeasParams(BaseModel):
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
@@ -597,6 +600,23 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["report_id", "intro_text"]
+                }
+            },
+            "convert_numbers_to_ids": {
+                "name": "convert_numbers_to_ids",
+                "description": "将用户编号数组转换为用户ID数组。根据用户编号查找对应的用户ID",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "numbers": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "description": "用户编号数组"
+                        }
+                    },
+                    "required": ["numbers"]
                 }
             },
             "get_latest_24h_ideas": {
@@ -2044,6 +2064,57 @@ class AihehuoMCPServer:
                         "intro_text": arguments.get("intro_text", ""),
                         "error": str(e),
                         "message": "Failed to notify mentioned users"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "convert_numbers_to_ids":
+                try:
+                    params = ConvertNumbersToIdsParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for converting numbers to IDs: /users/convert_numbers_to_ids
+                    url = f"{AIHEHUO_API_BASE}/users/convert_numbers_to_ids"
+                    
+                    payload = {
+                        "numbers": params.numbers
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "numbers": arguments.get("numbers", []),
+                        "error": str(e),
+                        "message": "Failed to convert numbers to IDs"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
