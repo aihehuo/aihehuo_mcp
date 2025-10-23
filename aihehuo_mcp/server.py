@@ -267,6 +267,10 @@ class NotifyMentionedUsersParams(BaseModel):
     intro_text: str = Field(..., description="发送给提及用户的介绍文本")
     force: bool = Field(default=False, description="是否强制重新通知（默认false）")
 
+class SubmitConfirmedUsersParams(BaseModel):
+    report_id: str = Field(..., description="报告ID")
+    user_ids: List[str] = Field(..., description="已确认阅读报告的用户ID数组")
+
 class ConvertNumbersToIdsParams(BaseModel):
     numbers: List[int] = Field(..., description="用户编号数组")
 
@@ -600,6 +604,27 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["report_id", "intro_text"]
+                }
+            },
+            "submit_confirmed_users": {
+                "name": "submit_confirmed_users",
+                "description": "提交已确认阅读报告的用户ID。这些用户将永远不会再收到该报告的通知，即使使用force=true也不会通知",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {
+                            "type": "string",
+                            "description": "报告ID"
+                        },
+                        "user_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "已确认阅读报告的用户ID数组"
+                        }
+                    },
+                    "required": ["report_id", "user_ids"]
                 }
             },
             "convert_numbers_to_ids": {
@@ -2064,6 +2089,58 @@ class AihehuoMCPServer:
                         "intro_text": arguments.get("intro_text", ""),
                         "error": str(e),
                         "message": "Failed to notify mentioned users"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "submit_confirmed_users":
+                try:
+                    params = SubmitConfirmedUsersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for submitting confirmed users: /ai_reports/{report_id}/submit_confirmed_users
+                    url = f"{AIHEHUO_API_BASE}/micro/ai_reports/{params.report_id}/submit_confirmed_users"
+                    
+                    payload = {
+                        "user_ids": params.user_ids
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "report_id": arguments.get("report_id", ""),
+                        "user_ids": arguments.get("user_ids", []),
+                        "error": str(e),
+                        "message": "Failed to submit confirmed users"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

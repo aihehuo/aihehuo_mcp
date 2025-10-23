@@ -63,6 +63,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
    - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification)
+   - `submit_confirmed_users(params)` - Submit confirmed users for AI report (report_id, user_ids array) - prevents future notifications
    - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
 
@@ -111,13 +112,14 @@ All API requests to the 爱合伙 backend include the following headers:
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **notify_mentioned_users()** should notify users mentioned in AI report and return success response (or error if API key/report_id is invalid or fields are missing)
+- **submit_confirmed_users()** should submit confirmed users and return success response (or error if API key/report_id is invalid or fields are missing)
 - **convert_numbers_to_ids()** should convert user numbers array to user IDs array and return results with found status (or error if API key is invalid or numbers array is empty)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All seventeen tools, prompts, and resources should be listed in their respective list responses
+- All eighteen tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -569,6 +571,43 @@ echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "no
 # ✅ Uses POST method to /micro/ai_reports/{report_id}/notify_mentioned_users
 # ✅ Sends notification to all users mentioned in the report
 # ✅ force=true allows re-notification even if already notified
+```
+
+### Submit Confirmed Users Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Submit confirmed users for an AI report (users who have read the report)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "46", "user_ids": ["12345", "67890"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Submit single confirmed user
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "46", "user_ids": ["12345"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Submit multiple confirmed users (larger batch)
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "46", "user_ids": ["12345", "67890", "11111", "22222", "33333"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Submit confirmed users for a different report
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "123", "user_ids": ["98765", "54321"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: missing required parameters
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "46"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: empty user_ids array
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "46", "user_ids": []}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid report_id
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "submit_confirmed_users", "arguments": {"report_id": "invalid_id", "user_ids": ["12345"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Points for Submit Confirmed Users:
+# ✅ Must provide report_id (required parameter)
+# ✅ Must provide user_ids array (required parameter)
+# ✅ User IDs should be strings (not numbers)
+# ✅ Uses POST method to /micro/ai_reports/{report_id}/submit_confirmed_users
+# ✅ Confirmed users will NEVER be notified again for this report
+# ✅ Even force=true in notify_mentioned_users won't notify confirmed users
+# ✅ Use this to mark users who have already read and acknowledged the report
+# ✅ Helps prevent notification spam and respects user engagement
 ```
 
 ### Convert Numbers to IDs Examples
