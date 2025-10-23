@@ -62,7 +62,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
-   - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification)
+   - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification, optional user_id to notify specific user)
    - `submit_confirmed_users(params)` - Submit confirmed users for AI report (report_id, user_ids array) - prevents future notifications
    - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
@@ -558,18 +558,29 @@ echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "no
 # Notify with detailed introduction text
 echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "尊敬的用户，我们很高兴地通知您，您在我们的《本周热门创业项目精选》报告中被特别推荐。您的项目展现了卓越的创新性和市场潜力，我们相信这将为您带来更多合作机会。请点击查看完整报告内容。"}}}' | uvx --from . python -m aihehuo_mcp.server
 
+# Notify only a specific user (use user_id parameter)
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "您好！您被特别提及在我们的报告中。", "user_id": 12345}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Notify specific user with force re-notification
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "46", "intro_text": "重要更新：报告已更新，请查看。", "user_id": 67890, "force": true}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Notify different specific user
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "123", "intro_text": "您在我们的新报告中被提及，感谢您的贡献！", "user_id": 98765}}}' | uvx --from . python -m aihehuo_mcp.server
+
 # Test error case: missing required parameters
-echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "123"}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "123"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Test error case: invalid report_id
-echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "invalid_id", "intro_text": "测试无效报告ID"}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "notify_mentioned_users", "arguments": {"report_id": "invalid_id", "intro_text": "测试无效报告ID"}}}' | uvx --from . python -m aihehuo_mcp.server
 
 # Key Points for Notify:
 # ✅ Must provide report_id (required parameter)
 # ✅ Must provide intro_text (required parameter)
 # ✅ force parameter is optional (default: false)
+# ✅ user_id parameter is optional (integer) - specify to notify only one user
 # ✅ Uses POST method to /micro/ai_reports/{report_id}/notify_mentioned_users
-# ✅ Sends notification to all users mentioned in the report
+# ✅ Without user_id: sends notification to all users mentioned in the report
+# ✅ With user_id: sends notification to only the specified user
 # ✅ force=true allows re-notification even if already notified
 ```
 

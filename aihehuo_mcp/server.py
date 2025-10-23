@@ -266,6 +266,7 @@ class NotifyMentionedUsersParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
     intro_text: str = Field(..., description="发送给提及用户的介绍文本")
     force: bool = Field(default=False, description="是否强制重新通知（默认false）")
+    user_id: Optional[int] = Field(default=None, description="可选，指定只通知某个提及的用户ID")
 
 class SubmitConfirmedUsersParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
@@ -585,7 +586,7 @@ class AihehuoMCPServer:
             },
             "notify_mentioned_users": {
                 "name": "notify_mentioned_users",
-                "description": "通知AI报告中提及的用户。向报告中关联的用户发送通知消息",
+                "description": "通知AI报告中提及的用户。向报告中关联的用户发送通知消息。可以通知所有提及的用户，也可以只通知指定的单个用户",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -601,6 +602,10 @@ class AihehuoMCPServer:
                             "type": "boolean",
                             "description": "是否强制重新通知（默认false）",
                             "default": False
+                        },
+                        "user_id": {
+                            "type": "integer",
+                            "description": "可选，指定只通知某个提及的用户ID（不提供则通知所有提及的用户）"
                         }
                     },
                     "required": ["report_id", "intro_text"]
@@ -2065,6 +2070,10 @@ class AihehuoMCPServer:
                         "intro_text": params.intro_text,
                         "force": params.force
                     }
+                    
+                    # Add optional user_id if provided
+                    if params.user_id is not None:
+                        payload["user_id"] = params.user_id
                     
                     resp = requests.post(url, json=payload, headers=headers, timeout=30)
                     resp.raise_for_status()
