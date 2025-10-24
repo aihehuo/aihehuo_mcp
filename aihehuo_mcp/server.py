@@ -204,6 +204,7 @@ WECHAT_ARTICLE_TEMPLATE = """<!-- 微信公众号文章HTML模板 - 爱合伙创
 class SearchMembersParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
+    wechat_reachable_only: bool = Field(default=False, description="是否只返回微信上能直接触达的用户（默认false）")
 
 class SearchIdeasParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
@@ -309,6 +310,11 @@ class AihehuoMCPServer:
                                 "per": {"type": "integer", "default": 10}
                             },
                             "default": {"page": 1, "per": 10}
+                        },
+                        "wechat_reachable_only": {
+                            "type": "boolean",
+                            "description": "是否只返回微信上能直接触达的用户（默认false）",
+                            "default": False
                         }
                     },
                     "required": ["query"]
@@ -906,7 +912,8 @@ class AihehuoMCPServer:
                     payload = {
                         "query": params.query,
                         "paginate": params.paginate,
-                        "vector_search": True
+                        "vector_search": True,
+                        "wechat_reachable_only": params.wechat_reachable_only
                     }
                     headers = {
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
