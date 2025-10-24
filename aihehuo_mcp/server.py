@@ -265,6 +265,9 @@ class UpdateAIReportParams(BaseModel):
     mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
     mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
+class GetAIReportParams(BaseModel):
+    report_id: str = Field(..., description="报告ID")
+
 class NotifyMentionedUsersParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
     intro_text: str = Field(..., description="发送给提及用户的介绍文本")
@@ -601,6 +604,20 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["report_id", "title", "abstract"]
+                }
+            },
+            "get_ai_report": {
+                "name": "get_ai_report",
+                "description": "获取指定AI报告的详细信息。返回报告的基本信息，包括标题、摘要、关联的用户和项目ID、已确认用户ID",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {
+                            "type": "string",
+                            "description": "报告ID"
+                        }
+                    },
+                    "required": ["report_id"]
                 }
             },
             "notify_mentioned_users": {
@@ -2068,6 +2085,69 @@ class AihehuoMCPServer:
                         "title": arguments.get("title", ""),
                         "error": str(e),
                         "message": "Failed to update AI report"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_ai_report":
+                try:
+                    params = GetAIReportParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for getting AI report: /ai_reports/{report_id}
+                    url = f"{AIHEHUO_API_BASE}/ai_reports/{params.report_id}"
+                    
+                    resp = requests.get(url, headers=headers, timeout=30)
+                    resp.raise_for_status()
+                    
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    full_data = resp.json()
+                    
+                    # Extract only the required fields from the response
+                    if "data" in full_data:
+                        report_data = full_data["data"]
+                        filtered_data = {
+                            "data": {
+                                "id": report_data.get("id"),
+                                "title": report_data.get("title"),
+                                "abstract": report_data.get("abstract"),
+                                "mentioned_user_ids": report_data.get("mentioned_user_ids", []),
+                                "mentioned_idea_ids": report_data.get("mentioned_idea_ids", []),
+                                "confirmed_user_ids": report_data.get("confirmed_user_ids", [])
+                            }
+                        }
+                    else:
+                        filtered_data = full_data
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(filtered_data, ensure_ascii=False, indent=2)
+
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+
+                except Exception as e:
+                    error_result = {
+                        "report_id": arguments.get("report_id", ""),
+                        "error": str(e),
+                        "message": "Failed to get AI report"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

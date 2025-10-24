@@ -62,6 +62,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `submit_wechat_article_draft(params)` - Submit a WeChat article draft (title, digest, body OR body_file for file upload, HTML without hyperlinks)
    - `create_ai_report(params)` - Create AI-generated report for official website display (title, abstract, html_body OR html_file_path for file upload, hyperlinks allowed, mentioned users/ideas)
    - `update_ai_report(params)` - Update existing AI-generated report (report_id, title, abstract, html_body OR html_file_path, mentioned users/ideas)
+   - `get_ai_report(params)` - Get AI report information (report_id) - returns id, title, abstract, mentioned_user_ids, mentioned_idea_ids, confirmed_user_ids
    - `notify_mentioned_users(params)` - Notify users mentioned in AI report (report_id, intro_text, force re-notification, optional user_id to notify specific user)
    - `submit_confirmed_users(params)` - Submit confirmed users for AI report (report_id, user_ids array) - prevents future notifications
    - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
@@ -111,6 +112,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **submit_wechat_article_draft()** should submit article draft and return success response (or error if API key is invalid or fields are missing). Supports both inline HTML (`body`) and file upload (`body_file`)
 - **create_ai_report()** should create AI report and return success response with report ID (or error if API key is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
 - **update_ai_report()** should update existing AI report and return success response (or error if API key/report_id is invalid or fields are missing). Supports both inline HTML (`html_body`) and file upload (`html_file_path`)
+- **get_ai_report()** should return AI report information including id, title, abstract, mentioned_user_ids, mentioned_idea_ids, and confirmed_user_ids (or error if API key/report_id is invalid or report not found)
 - **notify_mentioned_users()** should notify users mentioned in AI report and return success response (or error if API key/report_id is invalid or fields are missing)
 - **submit_confirmed_users()** should submit confirmed users and return success response (or error if API key/report_id is invalid or fields are missing)
 - **convert_numbers_to_ids()** should convert user numbers array to user IDs array and return results with found status (or error if API key is invalid or numbers array is empty)
@@ -564,9 +566,37 @@ echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "up
 # ✅ Must provide report_id (required parameter)
 # ✅ All other parameters same as create_ai_report
 # ✅ Uses PUT method to update existing report
-# ✅ Can update title, abstract, html content, and mentions
-# ✅ Hyperlinks are allowed (<a> tags)
-# ✅ Choose ONE: either "html_body" (for inline HTML) OR "html_file_path" (for file upload)
+```
+
+### Get AI Report Examples
+```bash
+# Get AI report information by ID
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_ai_report", "arguments": {"report_id": "60"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get another report
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_ai_report", "arguments": {"report_id": "456"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: report not found
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_ai_report", "arguments": {"report_id": "999999"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Expected Response Format:
+# {
+#   "data": {
+#     "id": 36,
+#     "title": "报告标题",
+#     "abstract": "报告摘要",
+#     "mentioned_user_ids": [1, 2, 3],
+#     "mentioned_idea_ids": [10, 20],
+#     "confirmed_user_ids": [1, 5, 8]
+#   }
+# }
+
+# Key Points:
+# ✅ Only requires report_id parameter
+# ✅ Returns basic report information: id, title, abstract, mentioned_user_ids, mentioned_idea_ids, confirmed_user_ids
+# ✅ Does not return full HTML body to reduce response size
+# ✅ confirmed_user_ids contains IDs of users who have confirmed/acknowledged the report
+# ✅ Returns 404 error if report not found
 ```
 
 ### Notify Mentioned Users Examples
