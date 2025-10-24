@@ -205,6 +205,8 @@ class SearchMembersParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
     wechat_reachable_only: bool = Field(default=False, description="是否只返回微信上能直接触达的用户（默认false）")
+    investor: Optional[bool] = Field(default=None, description="只搜索投资人（默认false）")
+    excluded_ids: Optional[List[str]] = Field(default=None, description="要排除的用户ID数组")
 
 class SearchIdeasParams(BaseModel):
     query: str = Field(..., description="搜索关键词")
@@ -315,6 +317,17 @@ class AihehuoMCPServer:
                             "type": "boolean",
                             "description": "是否只返回微信上能直接触达的用户（默认false）",
                             "default": False
+                        },
+                        "investor": {
+                            "type": "boolean",
+                            "description": "只搜索投资人（可选，默认false）"
+                        },
+                        "excluded_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "要排除的用户ID数组（可选）"
                         }
                     },
                     "required": ["query"]
@@ -915,6 +928,13 @@ class AihehuoMCPServer:
                         "vector_search": True,
                         "wechat_reachable_only": params.wechat_reachable_only
                     }
+                    
+                    # Add optional parameters if provided
+                    if params.investor is not None:
+                        payload["investor"] = params.investor
+                    if params.excluded_ids is not None:
+                        payload["excluded_ids"] = params.excluded_ids
+                    
                     headers = {
                         "Authorization": f"Bearer {AIHEHUO_API_KEY}",
                         "Content-Type": "application/json",

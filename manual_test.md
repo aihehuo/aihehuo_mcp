@@ -47,7 +47,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
 
 2. The server will provide these tools:
    - `server_info()` - Health check and server information
-   - `search_members(params)` - Search for 爱合伙 members using semantic vector search (query must be >5 characters, use coherent sentences, optional wechat_reachable_only to filter users)
+   - `search_members(params)` - Search for 爱合伙 members using semantic vector search (query must be >5 characters, use coherent sentences, optional wechat_reachable_only, investor, excluded_ids to filter users)
    - `search_ideas(params)` - Search for 爱合伙 ideas/projects using semantic vector search (use coherent sentences)
    - `get_group_info(params)` - Get group information and all member data at once (saves as Markdown file to /tmp)
    - `update_bio(params)` - Update user profile bio
@@ -96,7 +96,7 @@ All API requests to the 爱合伙 backend include the following headers:
 ## Expected Results
 
 - **server_info()** should return server metadata
-- **search_members()** should return search results (or error if API key is invalid). Supports optional wechat_reachable_only parameter (default: false) to filter only users reachable on WeChat
+- **search_members()** should return search results (or error if API key is invalid). Supports optional parameters: wechat_reachable_only (filter users reachable on WeChat), investor (filter only investors), excluded_ids (exclude specific user IDs)
 - **search_ideas()** should return idea/project search results (or error if API key is invalid)
 - **get_group_info()** should save group information and all member data as Markdown file to /tmp directory and return file path (or error if API key is invalid). The file contains formatted group info and complete user list. Use read_file to access the content.
 - **update_bio()** should update user bio and return success/error response
@@ -165,7 +165,10 @@ Since both `search_members` and `search_ideas` use vector semantic search, it's 
 - Include context and specific requirements
 - Mention the purpose or goal of your search
 - Be descriptive about the type of person or project you need
-- For `search_members`, use `wechat_reachable_only: true` to filter only users who can be directly reached on WeChat
+- For `search_members`, use optional filters:
+  - `wechat_reachable_only: true` - Only users who can be directly reached on WeChat
+  - `investor: true` - Only search for investors
+  - `excluded_ids: ["id1", "id2"]` - Exclude specific users from results
 
 ## Test Examples
 
@@ -189,8 +192,20 @@ echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "se
 # Search without wechat_reachable_only (default: false, returns all users)
 echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找对教育科技有热情的创业者", "wechat_reachable_only": false}}}' | uvx --from . python -m aihehuo_mcp.server
 
+# Search for investors only
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找对AI领域感兴趣的投资人", "investor": true}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Search for investors with wechat_reachable_only
+echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找早期投资人，关注教育科技领域", "investor": true, "wechat_reachable_only": true}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Search with excluded_ids (exclude specific users)
+echo '{"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "寻找有技术背景的创业者", "excluded_ids": ["12345", "67890"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Search with multiple filters combined
+echo '{"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "章宇辰爱合伙创始人", "investor": true, "wechat_reachable_only": true, "excluded_ids": ["1"], "paginate": {"page": 1, "per": 15}}}}' | uvx --from . python -m aihehuo_mcp.server
+
 # Bad example (too short) - will return error
-echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI"}}}' | uvx --from . python -m aihehuo_mcp.server
+echo '{"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {"name": "search_members", "arguments": {"query": "AI"}}}' | uvx --from . python -m aihehuo_mcp.server
 ```
 
 ### Search Ideas Examples
