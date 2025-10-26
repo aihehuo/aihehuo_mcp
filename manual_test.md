@@ -32,6 +32,12 @@
    
    # Test 8: Get current user profile (requires API key and CURRENT_USER_ID)
    echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "get_current_user", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 9: Get Bot Impression for a user (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {"user_id": 123}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 10: Update Bot Impression for a user (requires API key)
+   echo '{"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 123, "summary": "AI创业者，专注技术研发", "tags": ["AI", "创业", "技术"]}}}' | uvx --from . python -m aihehuo_mcp.server
    ```
 
 ## Method 2: Using MCP Client
@@ -67,6 +73,8 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `submit_confirmed_users(params)` - Submit confirmed users for AI report (report_id, user_ids array) - prevents future notifications
    - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
+   - `get_bot_impressions(params)` - Get Bot Impression information for a specific user (user_id)
+   - `update_bot_impressions(params)` - Update Bot Impression information for a specific user (user_id, summary, tags)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -117,11 +125,13 @@ All API requests to the 爱合伙 backend include the following headers:
 - **submit_confirmed_users()** should submit confirmed users and return success response (or error if API key/report_id is invalid or fields are missing)
 - **convert_numbers_to_ids()** should convert user numbers array to user IDs array and return results with found status (or error if API key is invalid or numbers array is empty)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
+- **get_bot_impressions()** should return Bot Impression information for a specific user including summary, tags, and sidenotes (or error if API key/user_id is invalid)
+- **update_bot_impressions()** should update Bot Impression information and return success response with updated data (or error if API key/user_id is invalid or validation fails)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All eighteen tools, prompts, and resources should be listed in their respective list responses
+- All twenty tools, prompts, and resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -730,6 +740,101 @@ echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "ge
 # ✅ Includes full project details, links, and metadata
 # ✅ Perfect for AI analysis and recommendations
 # ✅ Response includes both data and meta information
+```
+
+### Get Bot Impressions Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Get Bot Impression information for a specific user
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {"user_id": 1}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get Bot Impression for another user
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {"user_id": 456}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Get Bot Impression for yet another user
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {"user_id": 789}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid user_id
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {"user_id": 999999}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: missing user_id
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "get_bot_impressions", "arguments": {}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Expected Response Format:
+# {
+#   "data": {
+#     "id": 1,
+#     "user_id": 123,
+#     "summary": "用户摘要信息",
+#     "tags": ["tag1", "tag2"],
+#     "sidenotes": {...}
+#   }
+# }
+
+# Key Features:
+# ✅ Requires user_id parameter (integer)
+# ✅ Returns Bot Impression data including summary, tags, and sidenotes
+# ✅ Uses GET method to /micro/bot_impressions/show_by_user
+# ✅ Includes User-Agent: LLM_AGENT header for LLM-optimized responses
+# ✅ Returns 404 error if user not found or no Bot Impression data
+# ✅ Requires valid API key for authentication
+# ✅ Response includes structured data for AI analysis
+```
+
+### Update Bot Impressions Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Update Bot Impression with both summary and tags
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 1, "summary": "AI创业者，专注技术研发", "tags": ["AI", "创业", "技术"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update Bot Impression with only summary
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 456, "summary": "资深产品经理，擅长用户体验设计"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update Bot Impression with only tags
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 789, "tags": ["投资", "金融", "区块链"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update Bot Impression with different content
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 101, "summary": "教育科技创业者，专注在线学习平台", "tags": ["教育", "科技", "在线学习"]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Update Bot Impression with empty tags array
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 202, "summary": "医疗健康领域创业者", "tags": []}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: missing both summary and tags (should fail validation)
+echo '{"jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 303}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: missing user_id
+echo '{"jsonrpc": "2.0", "id": 7, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"summary": "测试摘要"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid user_id
+echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 999999, "summary": "测试摘要"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Expected Response Format:
+# {
+#   "message": "更新成功",
+#   "data": {
+#     "id": 1,
+#     "user_id": 123,
+#     "summary": "用户摘要信息",
+#     "tags": ["tag1", "tag2"]
+#   }
+# }
+
+# Key Features:
+# ✅ Requires user_id parameter (integer)
+# ✅ At least one of summary or tags must be provided
+# ✅ summary parameter is optional (string)
+# ✅ tags parameter is optional (array of strings)
+# ✅ Uses POST method to /micro/bot_impressions/update_by_user
+# ✅ Includes User-Agent: LLM_AGENT header for LLM-optimized responses
+# ✅ Returns success message with updated data
+# ✅ Returns 404 error if user not found
+# ✅ Returns validation error if neither summary nor tags provided
+# ✅ Requires valid API key for authentication
+# ✅ Response includes structured data for AI analysis
 ```
 
 ### Prompt Examples

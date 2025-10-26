@@ -284,6 +284,14 @@ class ConvertNumbersToIdsParams(BaseModel):
 class GetLatest24hIdeasParams(BaseModel):
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
+class GetBotImpressionsParams(BaseModel):
+    user_id: int = Field(..., description="用户ID")
+
+class UpdateBotImpressionsParams(BaseModel):
+    user_id: int = Field(..., description="用户ID")
+    summary: Optional[str] = Field(None, description="用户摘要")
+    tags: Optional[List[str]] = Field(None, description="标签列表")
+
 # === 爱合伙 MCP 服务器实现 ===
 class AihehuoMCPServer:
     def __init__(self):
@@ -701,6 +709,45 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": []
+                }
+            },
+            "get_bot_impressions": {
+                "name": "get_bot_impressions",
+                "description": "获取指定用户的 Bot Impression 信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "用户ID"
+                        }
+                    },
+                    "required": ["user_id"]
+                }
+            },
+            "update_bot_impressions": {
+                "name": "update_bot_impressions",
+                "description": "更新指定用户的 Bot Impression 信息",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "integer",
+                            "description": "用户ID"
+                        },
+                        "summary": {
+                            "type": "string",
+                            "description": "用户摘要"
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "标签列表"
+                        }
+                    },
+                    "required": ["user_id"]
                 }
             }
         }
@@ -2361,6 +2408,130 @@ class AihehuoMCPServer:
                         "error": str(e),
                         "message": "Failed to fetch latest 24h ideas",
                         "paginate": arguments.get("paginate", {})
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "get_bot_impressions":
+                try:
+                    params = GetBotImpressionsParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for bot impressions: /micro/bot_impressions/show_by_user
+                    url = f"{AIHEHUO_API_BASE}/micro/bot_impressions/show_by_user"
+                    
+                    # Add user_id as query parameter
+                    request_params = {
+                        "user_id": params.user_id
+                    }
+                    
+                    resp = requests.get(url, params=request_params, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    plain_text = resp.text
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": plain_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": arguments.get("user_id", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to fetch bot impressions"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "update_bot_impressions":
+                try:
+                    params = UpdateBotImpressionsParams(**arguments)
+                    
+                    # Validate that at least summary or tags is provided
+                    if params.summary is None and params.tags is None:
+                        error_result = {
+                            "error": "Validation error",
+                            "message": "At least one of summary or tags must be provided",
+                            "user_id": params.user_id
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for updating bot impressions: /micro/bot_impressions/update_by_user
+                    url = f"{AIHEHUO_API_BASE}/micro/bot_impressions/update_by_user"
+                    
+                    # Prepare payload
+                    payload = {
+                        "user_id": params.user_id
+                    }
+                    
+                    # Add optional fields if provided
+                    if params.summary is not None:
+                        payload["summary"] = params.summary
+                    if params.tags is not None:
+                        payload["tags"] = params.tags
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    plain_text = resp.text
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": plain_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "user_id": arguments.get("user_id", "unknown"),
+                        "summary": arguments.get("summary"),
+                        "tags": arguments.get("tags"),
+                        "error": str(e),
+                        "message": "Failed to update bot impressions"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
