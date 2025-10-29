@@ -262,8 +262,6 @@ class UpdateAIReportParams(BaseModel):
     abstract: str = Field(..., description="报告摘要/简介")
     html_body: Optional[str] = Field(None, description="报告正文HTML内容（与html_file_path二选一）")
     html_file_path: Optional[str] = Field(None, description="HTML文件路径（与html_body二选一，用于大型HTML内容）")
-    mentioned_user_ids: List[str] = Field(default_factory=list, description="报告中提及的用户ID列表（注意是ID字符串，不是number）")
-    mentioned_idea_ids: List[str] = Field(default_factory=list, description="报告中提及的项目/想法ID列表")
 
 class GetAIReportParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
@@ -582,7 +580,7 @@ class AihehuoMCPServer:
             },
             "update_ai_report": {
                 "name": "update_ai_report",
-                "description": "更新已存在的AI报告。可以更新报告的标题、摘要、正文、以及关联的用户和项目。支持直接提供HTML内容或提供HTML文件路径",
+                "description": "更新已存在的AI报告。可以更新报告的标题、摘要、正文。支持直接提供HTML内容或提供HTML文件路径",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -605,22 +603,6 @@ class AihehuoMCPServer:
                         "html_file_path": {
                             "type": "string",
                             "description": "HTML文件的绝对路径。当HTML内容太大时使用此参数。与html_body二选一"
-                        },
-                        "mentioned_user_ids": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "报告中提及的用户ID列表（ID字符串，不是number）",
-                            "default": []
-                        },
-                        "mentioned_idea_ids": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "报告中提及的项目/想法ID列表",
-                            "default": []
                         }
                     },
                     "required": ["report_id", "title", "abstract"]
@@ -2141,13 +2123,6 @@ class AihehuoMCPServer:
                                     ('ai_report[abstract]', params.abstract),
                                     ('_method', 'put')  # Rails method override for multipart
                                 ]
-                                
-                                # Add array fields - each item as separate field with [] notation
-                                for user_id in params.mentioned_user_ids:
-                                    data.append(('ai_report[mentioned_user_ids][]', user_id))
-                                
-                                for idea_id in params.mentioned_idea_ids:
-                                    data.append(('ai_report[mentioned_idea_ids][]', idea_id))
 
                                 resp = requests.put(url, headers=headers, files=files, data=data, timeout=30)
 
@@ -2177,9 +2152,7 @@ class AihehuoMCPServer:
                             "ai_report": {
                                 "title": params.title,
                                 "abstract": params.abstract,
-                                "html_body": params.html_body,
-                                "mentioned_user_ids": params.mentioned_user_ids,
-                                "mentioned_idea_ids": params.mentioned_idea_ids
+                                "html_body": params.html_body
                             }
                         }
 
