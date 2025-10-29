@@ -278,6 +278,14 @@ class SubmitConfirmedUsersParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
     user_ids: List[str] = Field(..., description="已确认阅读报告的用户ID数组")
 
+class AddMentionedUsersParams(BaseModel):
+    report_id: str = Field(..., description="报告ID")
+    user_ids: List[str] = Field(..., description="要添加到mentioned_user_ids列表的用户ID数组")
+
+class RemoveMentionedUsersParams(BaseModel):
+    report_id: str = Field(..., description="报告ID")
+    user_ids: List[str] = Field(..., description="要从mentioned_user_ids列表中移除的用户ID数组")
+
 class SubmitRejectedUsersParams(BaseModel):
     report_id: str = Field(..., description="报告ID")
     user_ids: List[str] = Field(..., description="已拒绝阅读报告的用户ID数组")
@@ -675,6 +683,48 @@ class AihehuoMCPServer:
                                 "type": "string"
                             },
                             "description": "已确认阅读报告的用户ID数组"
+                        }
+                    },
+                    "required": ["report_id", "user_ids"]
+                }
+            },
+            "add_mentioned_users": {
+                "name": "add_mentioned_users",
+                "description": "向AI报告的mentioned_user_ids列表中添加用户ID",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {
+                            "type": "string",
+                            "description": "报告ID"
+                        },
+                        "user_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "要添加到mentioned_user_ids列表的用户ID数组"
+                        }
+                    },
+                    "required": ["report_id", "user_ids"]
+                }
+            },
+            "remove_mentioned_users": {
+                "name": "remove_mentioned_users",
+                "description": "从AI报告的mentioned_user_ids列表中移除用户ID",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "report_id": {
+                            "type": "string",
+                            "description": "报告ID"
+                        },
+                        "user_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "要从mentioned_user_ids列表中移除的用户ID数组"
                         }
                     },
                     "required": ["report_id", "user_ids"]
@@ -2329,6 +2379,110 @@ class AihehuoMCPServer:
                         "user_ids": arguments.get("user_ids", []),
                         "error": str(e),
                         "message": "Failed to submit confirmed users"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "add_mentioned_users":
+                try:
+                    params = AddMentionedUsersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for adding mentioned users: /ai_reports/{report_id}/add_mentioned_users
+                    url = f"{AIHEHUO_API_BASE}/micro/ai_reports/{params.report_id}/add_mentioned_users"
+                    
+                    payload = {
+                        "user_ids": params.user_ids
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "report_id": arguments.get("report_id", ""),
+                        "user_ids": arguments.get("user_ids", []),
+                        "error": str(e),
+                        "message": "Failed to add mentioned users"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "remove_mentioned_users":
+                try:
+                    params = RemoveMentionedUsersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for removing mentioned users: /ai_reports/{report_id}/remove_mentioned_users
+                    url = f"{AIHEHUO_API_BASE}/micro/ai_reports/{params.report_id}/remove_mentioned_users"
+                    
+                    payload = {
+                        "user_ids": params.user_ids
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=30)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "report_id": arguments.get("report_id", ""),
+                        "user_ids": arguments.get("user_ids", []),
+                        "error": str(e),
+                        "message": "Failed to remove mentioned users"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
