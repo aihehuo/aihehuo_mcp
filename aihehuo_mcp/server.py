@@ -2221,7 +2221,8 @@ class AihehuoMCPServer:
                                 "abstract": report_data.get("abstract"),
                                 "mentioned_user_ids": report_data.get("mentioned_user_ids", []),
                                 "mentioned_idea_ids": report_data.get("mentioned_idea_ids", []),
-                                "confirmed_user_ids": report_data.get("confirmed_user_ids", [])
+                                "confirmed_user_ids": report_data.get("confirmed_user_ids", []),
+                                "rejected_user_ids": report_data.get("rejected_user_ids", [])
                             }
                         }
                     else:
