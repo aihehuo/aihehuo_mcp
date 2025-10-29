@@ -291,6 +291,9 @@ class SubmitRejectedUsersParams(BaseModel):
 class ConvertNumbersToIdsParams(BaseModel):
     numbers: List[int] = Field(..., description="用户编号数组")
 
+class ConvertIdsToNumbersParams(BaseModel):
+    ids: List[int] = Field(..., description="用户ID数组")
+
 class GetLatest24hIdeasParams(BaseModel):
     paginate: Dict[str, int] = Field(default_factory=lambda: {"page": 1, "per": 10}, description="分页参数")
 
@@ -748,6 +751,23 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["numbers"]
+                }
+            },
+            "convert_ids_to_numbers": {
+                "name": "convert_ids_to_numbers",
+                "description": "将用户ID数组转换为用户编号数组。根据用户ID查找对应的用户编号",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            },
+                            "description": "用户ID数组"
+                        }
+                    },
+                    "required": ["ids"]
                 }
             },
             "get_latest_24h_ideas": {
@@ -2560,6 +2580,57 @@ class AihehuoMCPServer:
                         "numbers": arguments.get("numbers", []),
                         "error": str(e),
                         "message": "Failed to convert numbers to IDs"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            elif tool_name == "convert_ids_to_numbers":
+                try:
+                    params = ConvertIdsToNumbersParams(**arguments)
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for converting IDs to numbers: /users/convert_ids_to_numbers
+                    url = f"{AIHEHUO_API_BASE}/users/convert_ids_to_numbers"
+                    
+                    payload = {
+                        "ids": params.ids
+                    }
+                    
+                    resp = requests.post(url, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    data = resp.json()
+                    
+                    # Properly encode the JSON data as UTF-8 string
+                    json_text = json.dumps(data, ensure_ascii=False, indent=2)
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "ids": arguments.get("ids", []),
+                        "error": str(e),
+                        "message": "Failed to convert IDs to numbers"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)

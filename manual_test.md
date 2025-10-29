@@ -75,6 +75,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `add_mentioned_users(params)` - Add user IDs to AI report mentioned_user_ids list (report_id, user_ids array) - adds to existing list
    - `remove_mentioned_users(params)` - Remove user IDs from AI report mentioned_user_ids list (report_id, user_ids array) - removes from existing list
    - `convert_numbers_to_ids(params)` - Convert user numbers array to user IDs array (numbers array)
+   - `convert_ids_to_numbers(params)` - Convert user IDs array to user numbers array (ids array)
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
    - `get_bot_impressions(params)` - Get Bot Impression information for a specific user (user_id)
    - `update_bot_impressions(params)` - Update Bot Impression information for a specific user (user_id, summary, tags)
@@ -130,6 +131,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **add_mentioned_users()** should add user IDs to mentioned_user_ids list and return success response (or error if API key/report_id is invalid or fields are missing)
 - **remove_mentioned_users()** should remove user IDs from mentioned_user_ids list and return success response (or error if API key/report_id is invalid or fields are missing)
 - **convert_numbers_to_ids()** should convert user numbers array to user IDs array and return results with found status (or error if API key is invalid or numbers array is empty)
+- **convert_ids_to_numbers()** should convert user IDs array to user numbers array and return results with found status (or error if API key is invalid or ids array is empty)
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **get_bot_impressions()** should return Bot Impression information for a specific user including summary, tags, and sidenotes (or error if API key/user_id is invalid)
 - **update_bot_impressions()** should update Bot Impression information and return success response with updated data (or error if API key/user_id is invalid or validation fails)
@@ -137,7 +139,7 @@ All API requests to the 爱合伙 backend include the following headers:
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All 26 tools, 2 prompts, and 2 resources should be listed in their respective list responses
+- All 27 tools, 2 prompts, and 2 resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -831,6 +833,35 @@ echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "co
 # ✅ Returns results array with number, user_id, and found status
 # ✅ found=true means user exists, found=false means user not found
 # ✅ user_id will be null if user not found
+```
+
+### Convert IDs to Numbers Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Convert user IDs to numbers (basic example)
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "convert_ids_to_numbers", "arguments": {"ids": [1, 2, 999999]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Convert single user ID
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "convert_ids_to_numbers", "arguments": {"ids": [1]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Convert multiple user IDs (some may not exist)
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "convert_ids_to_numbers", "arguments": {"ids": [1, 2, 3, 999999, 123456]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: empty ids array
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "convert_ids_to_numbers", "arguments": {"ids": []}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid ids (non-integer)
+echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "convert_ids_to_numbers", "arguments": {"ids": ["invalid", 1]}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Key Points for Convert:
+# ✅ Must provide ids array (required parameter)
+# ✅ Each id should be an integer (user ID)
+# ✅ Uses POST method to /users/convert_ids_to_numbers
+# ✅ Returns results array with user_id, number, and found status
+# ✅ found=true means user exists, found=false means user not found
+# ✅ number will be null if user not found
 ```
 
 ### Get Latest 24h Ideas Examples
