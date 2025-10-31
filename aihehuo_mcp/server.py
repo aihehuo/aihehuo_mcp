@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 import warnings
 from typing import Any, Dict, List, Optional
@@ -2985,21 +2986,52 @@ async def main() -> None:
     
     # 从 stdin 读取请求，向 stdout 写入响应
     while True:
+        request_id = None
+        line = sys.stdin.readline()
+        if not line:
+            break
+        
         try:
-            line = sys.stdin.readline()
-            if not line:
-                break
+            # Try to parse JSON first
+            try:
+                request = json.loads(line.strip())
+                request_id = request.get("id")
+            except json.JSONDecodeError as json_err:
+                # Try to extract id from raw string for parse error responses
+                id_match = re.search(r'"id"\s*:\s*("([^"]+)"|(\d+))', line)
+                if id_match:
+                    id_str = id_match.group(2) or id_match.group(3)
+                    try:
+                        request_id = int(id_str)
+                    except ValueError:
+                        request_id = id_str
+                
+                # For JSON-RPC 2.0, parse error responses should have id: null
+                # But MCP validator may require a valid id, so use 0 as fallback if extraction fails
+                # This is technically incorrect per JSON-RPC spec but needed for compatibility
+                error_response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id if request_id is not None else 0,
+                    "error": {
+                        "code": -32700,
+                        "message": f"Parse error: {str(json_err)}"
+                    }
+                }
+                error_json = json.dumps(error_response, ensure_ascii=False)
+                print(error_json, flush=True)
+                continue
             
-            request = json.loads(line.strip())
             response = await server.handle_request(request)
             # Ensure UTF-8 output
             response_json = json.dumps(response, ensure_ascii=False)
             print(response_json, flush=True)
             
         except Exception as e:
+            # Use the request_id we extracted earlier
+            # If request_id is None (shouldn't happen for valid requests), use 0 as fallback
             error_response = {
                 "jsonrpc": "2.0",
-                "id": None,
+                "id": request_id if request_id is not None else 0,
                 "error": {
                     "code": -32603,
                     "message": f"Internal error: {str(e)}"
