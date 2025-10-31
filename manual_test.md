@@ -38,6 +38,9 @@
    
    # Test 10: Update Bot Impression for a user (requires API key)
    echo '{"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "update_bot_impressions", "arguments": {"user_id": 123, "summary": "AI创业者，专注技术研发", "tags": ["AI", "创业", "技术"]}}}' | uvx --from . python -m aihehuo_mcp.server
+   
+   # Test 11: Upload business plan PDF (requires API key and PDF file)
+   echo '{"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": {"name": "upload_business_plan", "arguments": {"file_path": "./bp.pdf"}}}' | uvx --from . python -m aihehuo_mcp.server
    ```
 
 ## Method 2: Using MCP Client
@@ -79,6 +82,7 @@ If you have an MCP client (like in Cursor or other MCP-compatible tools), you ca
    - `get_latest_24h_ideas(params)` - Get latest ideas/projects published in the past 24 hours (LLM-optimized text format, automatic filtering, newest first)
    - `get_bot_impressions(params)` - Get Bot Impression information for a specific user (user_id)
    - `update_bot_impressions(params)` - Update Bot Impression information for a specific user (user_id, summary, tags)
+   - `upload_business_plan(params)` - Upload business plan PDF file and auto-convert to images (first 15 pages max)
 
 3. The server will also provide these prompts:
    - `pitch` - Create a compelling 60-second elevator pitch based on your validated business model
@@ -135,11 +139,12 @@ All API requests to the 爱合伙 backend include the following headers:
 - **get_latest_24h_ideas()** should return latest ideas published in past 24 hours in LLM-optimized text format (or error if API key is invalid)
 - **get_bot_impressions()** should return Bot Impression information for a specific user including summary, tags, and sidenotes (or error if API key/user_id is invalid)
 - **update_bot_impressions()** should update Bot Impression information and return success response with updated data (or error if API key/user_id is invalid or validation fails)
+- **upload_business_plan()** should upload PDF file and return BP record with id, name, url, user_id, excerpt_url, job_id, pages (or error if API key is invalid, file not found, or invalid file type)
 - **prompts/list** should return available prompts
 - **prompts/get** should return prompt content from markdown files
 - **resources/list** should return available resources
 - **resources/read** should return brief current user profile (id, name, industry, city, bio) with tool reference
-- All 27 tools, 2 prompts, and 2 resources should be listed in their respective list responses
+- All 28 tools, 2 prompts, and 2 resources should be listed in their respective list responses
 
 ## Content Publishing Tools Comparison
 
@@ -984,6 +989,61 @@ echo '{"jsonrpc": "2.0", "id": 8, "method": "tools/call", "params": {"name": "up
 # ✅ Returns validation error if neither summary nor tags provided
 # ✅ Requires valid API key for authentication
 # ✅ Response includes structured data for AI analysis
+```
+
+### Upload Business Plan Examples
+```bash
+# IMPORTANT: Set your API key first (required for authentication)
+export AIHEHUO_API_KEY="your_actual_api_key_here"
+
+# Upload a business plan PDF file
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "upload_business_plan", "arguments": {"file_path": "/tmp/business-plan.pdf"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Upload another business plan
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "upload_business_plan", "arguments": {"file_path": "/tmp/my-startup-plan.pdf"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: file not found
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "upload_business_plan", "arguments": {"file_path": "/tmp/nonexistent.pdf"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Test error case: invalid file type (not PDF)
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "upload_business_plan", "arguments": {"file_path": "/tmp/document.docx"}}}' | uvx --from . python -m aihehuo_mcp.server
+
+# Expected Response Format:
+# {
+#   "data": {
+#     "id": 123,
+#     "name": "business-plan.pdf",
+#     "url": "https://oss-qd.aihehuo.com/1234567890_business-plan.pdf",
+#     "user_id": 456,
+#     "excerpt_url": "https://oss-qd.aihehuo.com/1234567890_business-plan_2.pdf",
+#     "job_id": "abc123xyz",
+#     "pages": 25
+#   }
+# }
+
+# Key Features:
+# ✅ Uploads business plan PDF file via POST /micro/bps endpoint
+# ✅ Automatically creates PDF excerpt (first 15 pages)
+# ✅ Asynchronously converts excerpt to images
+# ✅ Returns BP record with file URLs and metadata
+# ✅ job_id can be used to track image conversion progress
+# ✅ pages field shows total PDF page count
+# ✅ Requires valid API key (Bearer token) for authentication
+# ✅ File must be PDF format (validates file extension)
+# ✅ File must exist at specified absolute path
+# ✅ Upload timeout is 300 seconds (5 minutes) to handle large files
+# ✅ Returns validation error if file type is not PDF
+# ✅ Returns error if file not found
+# ✅ Image conversion starts 1 minute after upload
+# ✅ PDF text parsing happens asynchronously in background
+
+# Important Notes:
+# - File should be a valid PDF document
+# - Maximum recommended file size: determined by server configuration
+# - Image conversion is asynchronous - check back later via job_id
+# - Excerpt (first 15 pages) is automatically created
+# - Full PDF and excerpt are stored in cloud storage (OSS)
+# - Parsed text is available in parsed_text field after processing
 ```
 
 ### Prompt Examples

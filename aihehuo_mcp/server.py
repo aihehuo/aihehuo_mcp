@@ -305,6 +305,9 @@ class UpdateBotImpressionsParams(BaseModel):
     summary: Optional[str] = Field(None, description="用户摘要")
     tags: Optional[List[str]] = Field(None, description="标签列表")
 
+class UploadBusinessPlanParams(BaseModel):
+    file_path: str = Field(..., description="商业计划书 PDF 文件路径（绝对路径）")
+
 # === 爱合伙 MCP 服务器实现 ===
 class AihehuoMCPServer:
     def __init__(self):
@@ -825,6 +828,20 @@ class AihehuoMCPServer:
                         }
                     },
                     "required": ["user_id"]
+                }
+            },
+            "upload_business_plan": {
+                "name": "upload_business_plan",
+                "description": "上传商业计划书 PDF 文件并自动转换为图片（最多前15页）",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "商业计划书 PDF 文件路径（绝对路径）"
+                        }
+                    },
+                    "required": ["file_path"]
                 }
             }
         }
@@ -2808,6 +2825,129 @@ class AihehuoMCPServer:
                         "tags": arguments.get("tags"),
                         "error": str(e),
                         "message": "Failed to update bot impressions"
+                    }
+                    # Properly encode error result as UTF-8
+                    error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": error_text}]
+                        }
+                    }
+            
+            # @api {post} /bps 上传商业计划书 PDF
+            # @apiName CreateBp
+            # @apiGroup Bp
+            # @apiVersion 1.0.0
+            # @apiDescription 上传商业计划书 PDF 文件并自动转换为图片（最多前15页）
+            # @apiHeader {String} Authorization Bearer token（JWT 认证必填）
+            # @apiParam (multipart/form-data) {File} file 商业计划书 PDF 文件（必填）
+            # @apiParamExample {curl} 请求示例:
+            #   curl -X POST https://new-api.aihehuo.com/micro/bps \
+            #     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+            #     -F "file=@/path/to/business-plan.pdf"
+            # @apiSuccess {Number} id BP记录ID
+            # @apiSuccess {String} name 文件名
+            # @apiSuccess {String} url PDF文件URL
+            # @apiSuccess {Number} user_id 用户ID
+            # @apiSuccess {String} excerpt_url PDF摘要URL（前15页）
+            # @apiSuccess {String} job_id 图片转换任务ID（异步处理中）
+            # @apiSuccess {Number} pages PDF总页数
+            # @apiSuccessExample {json} 成功响应:
+            #   HTTP/1.1 201 Created
+            #   {
+            #     "id": 123,
+            #     "name": "business-plan.pdf",
+            #     "url": "https://oss-qd.aihehuo.com/1234567890_business-plan.pdf",
+            #     "user_id": 456,
+            #     "excerpt_url": "https://oss-qd.aihehuo.com/1234567890_business-plan_2.pdf",
+            #     "job_id": "abc123xyz",
+            #     "pages": 25
+            #   }
+            # @apiError (Error 400) UploadFailed 文件上传失败
+            # @apiError (Error 400) InvalidFileType 文件类型必须是 PDF
+            # @apiError (Error 401) Unauthorized 未授权（缺少或无效的 JWT token）
+            # @apiErrorExample {json} 错误响应:
+            #   HTTP/1.1 400 Bad Request
+            #   {
+            #     "error": "文件类型必须是 PDF",
+            #     "code": 0
+            #   }
+            # @apiNote
+            #   - 上传后会自动创建前15页的PDF摘要
+            #   - 摘要会异步转换为图片，可通过 job_id 或稍后查询 excerpt_images 字段获取结果
+            #   - 图片转换任务会在后台延迟1分钟后开始轮询
+            #   - PDF文本内容会自动解析并保存到 parsed_text 字段（后台异步处理）
+            
+            elif tool_name == "upload_business_plan":
+                try:
+                    params = UploadBusinessPlanParams(**arguments)
+                    
+                    # Verify file exists
+                    if not os.path.exists(params.file_path):
+                        error_result = {
+                            "error": "File not found",
+                            "message": f"PDF file not found at path: {params.file_path}"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    # Verify file is PDF
+                    if not params.file_path.lower().endswith('.pdf'):
+                        error_result = {
+                            "error": "Invalid file type",
+                            "message": "文件类型必须是 PDF"
+                        }
+                        error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": request_id,
+                            "result": {
+                                "content": [{"type": "text", "text": error_text}]
+                            }
+                        }
+                    
+                    headers = {
+                        "Authorization": f"Bearer {AIHEHUO_API_KEY}",
+                        "Accept": "application/json",
+                        "User-Agent": "LLM_AGENT"
+                    }
+
+                    # Build URL for BP upload: POST /micro/bps
+                    url = f"{AIHEHUO_API_BASE}/micro/bps"
+                    
+                    # Prepare multipart form data
+                    with open(params.file_path, 'rb') as f:
+                        files = {
+                            'file': (os.path.basename(params.file_path), f, 'application/pdf')
+                        }
+                        resp = requests.post(url, headers=headers, files=files, timeout=300)
+                        resp.raise_for_status()
+                    
+                    # Ensure response is decoded as UTF-8
+                    resp.encoding = 'utf-8'
+                    plain_text = resp.text
+                    
+                    return {
+                        "jsonrpc": "2.0",
+                        "id": request_id,
+                        "result": {
+                            "content": [{"type": "text", "text": plain_text}]
+                        }
+                    }
+                    
+                except Exception as e:
+                    error_result = {
+                        "file_path": arguments.get("file_path", "unknown"),
+                        "error": str(e),
+                        "message": "Failed to upload business plan"
                     }
                     # Properly encode error result as UTF-8
                     error_text = json.dumps(error_result, ensure_ascii=False, indent=2)
